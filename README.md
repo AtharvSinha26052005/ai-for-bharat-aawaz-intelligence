@@ -121,5 +121,3 @@ Initial deployment focuses on integrating:
 The system is designed for horizontal scalability and cost-efficient operation.
 
 ---
-
-## Repository Structure
