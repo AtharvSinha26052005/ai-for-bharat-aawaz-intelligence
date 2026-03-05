@@ -1,0 +1,46 @@
+{
+  "serviceName": "rural-digital-rights-ai-service",
+  "clusterName": "rural-digital-rights-cluster",
+  "scalingPolicies": [
+    {
+      "policyName": "cpu-scaling-policy",
+      "policyType": "TargetTrackingScaling",
+      "targetTrackingScalingPolicyConfiguration": {
+        "targetValue": 70.0,
+        "predefinedMetricSpecification": {
+          "predefinedMetricType": "ECSServiceAverageCPUUtilization"
+        },
+        "scaleInCooldown": 300,
+        "scaleOutCooldown": 60
+      }
+    },
+    {
+      "policyName": "memory-scaling-policy",
+      "policyType": "TargetTrackingScaling",
+      "targetTrackingScalingPolicyConfiguration": {
+        "targetValue": 80.0,
+        "predefinedMetricSpecification": {
+          "predefinedMetricType": "ECSServiceAverageMemoryUtilization"
+        },
+        "scaleInCooldown": 300,
+        "scaleOutCooldown": 60
+      }
+    },
+    {
+      "policyName": "request-count-scaling-policy",
+      "policyType": "TargetTrackingScaling",
+      "targetTrackingScalingPolicyConfiguration": {
+        "targetValue": 1000.0,
+        "predefinedMetricSpecification": {
+          "predefinedMetricType": "ALBRequestCountPerTarget",
+          "resourceLabel": "app/rural-digital-rights-alb/LOAD_BALANCER_ID/targetgroup/TARGET_GROUP_ID"
+        },
+        "scaleInCooldown": 300,
+        "scaleOutCooldown": 60
+      }
+    }
+  ],
+  "minCapacity": 2,
+  "maxCapacity": 20,
+  "desiredCount": 3
+}

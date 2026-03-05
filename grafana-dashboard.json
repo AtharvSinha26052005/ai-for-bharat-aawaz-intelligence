@@ -1,0 +1,150 @@
+{
+  "dashboard": {
+    "title": "Rural Digital Rights AI Companion - System Metrics",
+    "tags": ["production", "api", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{path}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "id": 2,
+        "title": "Error Rate (%)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "id": 3,
+        "title": "Response Time (p95, p99)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+      },
+      {
+        "id": 4,
+        "title": "Active Sessions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "active_sessions",
+            "legendFormat": "Active Sessions"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+      },
+      {
+        "id": 5,
+        "title": "CPU Usage (%)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+            "legendFormat": "CPU Usage"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 }
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage (MB)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes / 1024 / 1024",
+            "legendFormat": "Memory Usage"
+          }
+        ],
+        "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 }
+      },
+      {
+        "id": 7,
+        "title": "Database Connection Pool",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "database_connections_active",
+            "legendFormat": "Active"
+          },
+          {
+            "expr": "database_connections_idle",
+            "legendFormat": "Idle"
+          }
+        ],
+        "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 }
+      },
+      {
+        "id": 8,
+        "title": "External Service Latency (ms)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "external_service_duration_seconds{service=\"openai\"} * 1000",
+            "legendFormat": "OpenAI"
+          },
+          {
+            "expr": "external_service_duration_seconds{service=\"pinecone\"} * 1000",
+            "legendFormat": "Pinecone"
+          },
+          {
+            "expr": "external_service_duration_seconds{service=\"google_stt\"} * 1000",
+            "legendFormat": "Google STT"
+          },
+          {
+            "expr": "external_service_duration_seconds{service=\"google_tts\"} * 1000",
+            "legendFormat": "Google TTS"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 }
+      },
+      {
+        "id": 9,
+        "title": "Business Metrics",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(user_registrations_total[24h])",
+            "legendFormat": "New Users (24h)"
+          },
+          {
+            "expr": "increase(applications_submitted_total[24h])",
+            "legendFormat": "Applications (24h)"
+          },
+          {
+            "expr": "increase(fraud_reports_total[24h])",
+            "legendFormat": "Fraud Reports (24h)"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 }
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    }
+  }
+}
