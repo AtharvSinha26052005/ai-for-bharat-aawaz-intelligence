@@ -1,0 +1,20 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /api/v1/profile",
+  "rawPath": "/api/v1/profile",
+  "rawQueryString": "",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "requestContext": {
+    "http": {
+      "method": "POST",
+      "path": "/api/v1/profile",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "127.0.0.1",
+      "userAgent": "Custom User Agent"
+    }
+  },
+  "body": "{\"phoneNumber\":\"+919876543210\",\"age\":30,\"incomeRange\":\"1L-3L\",\"occupation\":\"Farmer\",\"familyComposition\":{\"adults\":2,\"children\":2,\"seniors\":1},\"location\":{\"state\":\"Rajasthan\",\"district\":\"Jaipur\",\"block\":\"Amer\",\"village\":\"Kukas\",\"pincode\":\"302028\"},\"primaryNeeds\":[\"agriculture\",\"loans\"],\"preferredLanguage\":\"hi\",\"preferredMode\":\"voice\",\"consentGiven\":true}",
+  "isBase64Encoded": false
+}

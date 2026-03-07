@@ -13,6 +13,7 @@ class Database {
       max: config.database.pool.max,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
+      ssl: { rejectUnauthorized: false },
     });
 
     this.pool.on('error', (err) => {

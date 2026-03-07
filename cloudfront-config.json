@@ -1,84 +1,88 @@
 {
-  "Comment": "CloudFront distribution for Rural Digital Rights AI Companion",
-  "Enabled": true,
-  "Origins": [
-    {
-      "Id": "S3-static-assets",
-      "DomainName": "rural-digital-rights-assets.s3.ap-south-1.amazonaws.com",
-      "S3OriginConfig": {
-        "OriginAccessIdentity": "origin-access-identity/cloudfront/CLOUDFRONT_OAI_ID"
-      }
+    "CallerReference": "aawaz-frontend-distribution-1",
+    "Aliases": {
+        "Quantity": 0
     },
-    {
-      "Id": "ALB-api-server",
-      "DomainName": "api.rural-digital-rights.example.com",
-      "CustomOriginConfig": {
-        "HTTPPort": 80,
-        "HTTPSPort": 443,
-        "OriginProtocolPolicy": "https-only",
-        "OriginSSLProtocols": ["TLSv1.2"]
-      }
-    }
-  ],
-  "DefaultCacheBehavior": {
-    "TargetOriginId": "ALB-api-server",
-    "ViewerProtocolPolicy": "redirect-to-https",
-    "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
-    "CachedMethods": ["GET", "HEAD", "OPTIONS"],
-    "ForwardedValues": {
-      "QueryString": true,
-      "Cookies": {
-        "Forward": "all"
-      },
-      "Headers": ["Authorization", "Accept-Language"]
+    "DefaultRootObject": "index.html",
+    "Origins": {
+        "Quantity": 1,
+        "Items": [
+            {
+                "Id": "aawaz-frontend-static-origin",
+                "DomainName": "aawaz-frontend-static.s3.us-east-1.amazonaws.com",
+                "S3OriginConfig": {
+                    "OriginAccessIdentity": ""
+                },
+                "OriginAccessControlId": "EHK2HX7QMLIEY"
+            }
+        ]
     },
-    "MinTTL": 0,
-    "DefaultTTL": 0,
-    "MaxTTL": 0,
-    "Compress": true
-  },
-  "CacheBehaviors": [
-    {
-      "PathPattern": "/static/*",
-      "TargetOriginId": "S3-static-assets",
-      "ViewerProtocolPolicy": "redirect-to-https",
-      "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
-      "CachedMethods": ["GET", "HEAD", "OPTIONS"],
-      "ForwardedValues": {
-        "QueryString": false,
-        "Cookies": {
-          "Forward": "none"
+    "OriginGroups": {
+        "Quantity": 0
+    },
+    "DefaultCacheBehavior": {
+        "TargetOriginId": "aawaz-frontend-static-origin",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "AllowedMethods": {
+            "Quantity": 2,
+            "Items": [
+                "HEAD",
+                "GET"
+            ],
+            "CachedMethods": {
+                "Quantity": 2,
+                "Items": [
+                    "HEAD",
+                    "GET"
+                ]
+            }
+        },
+        "ForwardedValues": {
+            "QueryString": false,
+            "Cookies": {
+                "Forward": "none"
+            }
+        },
+        "TrustedSigners": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "MinTTL": 0,
+        "DefaultTTL": 86400,
+        "MaxTTL": 31536000
+    },
+    "CacheBehaviors": {
+        "Quantity": 0
+    },
+    "CustomErrorResponses": {
+        "Quantity": 1,
+        "Items": [
+            {
+                "ErrorCode": 404,
+                "ResponsePagePath": "/index.html",
+                "ResponseCode": "200",
+                "ErrorCachingMinTTL": 300
+            }
+        ]
+    },
+    "Comment": "Aawaz Frontend Distribution",
+    "Logging": {
+        "Enabled": false,
+        "IncludeCookies": false,
+        "Bucket": "",
+        "Prefix": ""
+    },
+    "PriceClass": "PriceClass_100",
+    "Enabled": true,
+    "ViewerCertificate": {
+        "CloudFrontDefaultCertificate": true
+    },
+    "Restrictions": {
+        "GeoRestriction": {
+            "RestrictionType": "none",
+            "Quantity": 0
         }
-      },
-      "MinTTL": 86400,
-      "DefaultTTL": 604800,
-      "MaxTTL": 31536000,
-      "Compress": true
     },
-    {
-      "PathPattern": "/audio/*",
-      "TargetOriginId": "S3-static-assets",
-      "ViewerProtocolPolicy": "redirect-to-https",
-      "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
-      "CachedMethods": ["GET", "HEAD", "OPTIONS"],
-      "ForwardedValues": {
-        "QueryString": false,
-        "Cookies": {
-          "Forward": "none"
-        }
-      },
-      "MinTTL": 3600,
-      "DefaultTTL": 86400,
-      "MaxTTL": 604800,
-      "Compress": true
-    }
-  ],
-  "PriceClass": "PriceClass_All",
-  "ViewerCertificate": {
-    "ACMCertificateArn": "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERTIFICATE_ID",
-    "SSLSupportMethod": "sni-only",
-    "MinimumProtocolVersion": "TLSv1.2_2021"
-  },
-  "HttpVersion": "http2",
-  "IsIPV6Enabled": true
+    "WebACLId": "",
+    "HttpVersion": "http2"
 }

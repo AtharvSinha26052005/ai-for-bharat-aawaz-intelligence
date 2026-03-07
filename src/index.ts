@@ -1,25 +1,54 @@
+import serverless from 'serverless-http';
 import { createApp } from './app';
 import { config, validateConfig } from './config';
 import { db } from './db/connection';
 import { redis } from './db/redis';
 import logger from './utils/logger';
 
+let isInitialized = false;
+
+const initializeDependencies = async () => {
+    if (isInitialized) return;
+    
+    try {
+        // Validate configuration
+        validateConfig();
+        logger.info('Configuration validated');
+
+        // Test database connection
+        try {
+            await db.query('SELECT NOW()');
+            logger.info('Database connected');
+        } catch (dbError) {
+            logger.error('Database connection failed during init', { error: dbError });
+            // We don't throw here to allow the app to potentially recover or at least start up
+        }
+
+        // Test Redis connection - non-blocking and with short timeout
+        try {
+            const redisPromise = redis.set('health', 'ok', 10);
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Redis connection timeout')), 2000)
+            );
+            await Promise.race([redisPromise, timeoutPromise]);
+            logger.info('Redis connected');
+        } catch (redisError) {
+            logger.warn('Redis connection failed or timed out during init, proceeding without Redis', { error: redisError });
+        }
+        
+        isInitialized = true;
+    } catch (error) {
+        logger.error('Critical initialization error', { error });
+        throw error;
+    }
+};
+
+// Create Express app
+const app = createApp();
+
 async function startServer(): Promise<void> {
   try {
-    // Validate configuration
-    validateConfig();
-    logger.info('Configuration validated');
-
-    // Test database connection
-    await db.query('SELECT NOW()');
-    logger.info('Database connected');
-
-    // Test Redis connection
-    await redis.set('health', 'ok', 10);
-    logger.info('Redis connected');
-
-    // Create Express app
-    const app = createApp();
+    await initializeDependencies();
 
     // Start server
     const server = app.listen(config.port, () => {
@@ -77,5 +106,16 @@ async function startServer(): Promise<void> {
   }
 }
 
-// Start the server
-startServer();
+// Start the server if not running in AWS Lambda
+if (!process.env.LAMBDA_TASK_ROOT) {
+  startServer();
+}
+
+// Export Lambda handler
+const serverlessHandler = serverless(app);
+
+export const handler = async (event: any, context: any) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+  await initializeDependencies();
+  return serverlessHandler(event, context);
+};

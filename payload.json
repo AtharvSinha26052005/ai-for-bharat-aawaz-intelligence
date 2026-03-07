@@ -1,0 +1,17 @@
+{
+  "version": "2.0",
+  "routeKey": "ANY /{proxy+}",
+  "rawPath": "/health",
+  "rawQueryString": "",
+  "headers": {
+    "accept": "*/*",
+    "host": "j75wbhovsh.execute-api.us-east-1.amazonaws.com"
+  },
+  "requestContext": {
+    "http": {
+      "method": "GET",
+      "path": "/health"
+    }
+  },
+  "isBase64Encoded": false
+}

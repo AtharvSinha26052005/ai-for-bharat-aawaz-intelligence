@@ -13,6 +13,7 @@ class RedisClient {
         return delay;
       },
       maxRetriesPerRequest: 3,
+      connectTimeout: 1000,
     });
 
     this.client.on('connect', () => {

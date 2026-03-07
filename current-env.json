@@ -1,0 +1,7 @@
+{
+    "DATABASE_URL": "postgresql://postgres:aawaz123@aawaz-db.c4n44emagfee.us-east-1.rds.amazonaws.com:5432/rural_digital_rights",
+    "AWS_S3_BUCKET": "aawaz-audio-cache",
+    "JWT_SECRET": "OIdyfkGS9JmL2TUVwxaCDn1pcuQlgtBH",
+    "NODE_ENV": "production",
+    "REDIS_URL": "redis://master.aawaz-redis-cache.e5as6m.use1.cache.amazonaws.com:6379"
+}

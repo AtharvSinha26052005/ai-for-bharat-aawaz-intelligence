@@ -1,0 +1,18 @@
+$envVars = @{
+    DATABASE_URL = "postgresql://postgres:aawaz123@aawaz-db.c4n44emagfee.us-east-1.rds.amazonaws.com:5432/rural_digital_rights"
+    AWS_S3_BUCKET = "aawaz-audio-cache"
+    NODE_ENV = "production"
+    REDIS_URL = "redis://master.aawaz-redis-cache.e5as6m.use1.cache.amazonaws.com:6379"
+    DB_HOST = "aawaz-db.c4n44emagfee.us-east-1.rds.amazonaws.com"
+    REDIS_HOST = "master.aawaz-redis-cache.e5as6m.use1.cache.amazonaws.com"
+    AUDIO_CACHE_BUCKET = "aawaz-audio-cache"
+    SCHEME_DOCS_BUCKET = "aawaz-scheme-documents"
+    PINECONE_API_KEY = "pcsk_QDLKj_Q69QDwnmo11n9eB8bmTXQJtZdiUHyWHQKYMFxqTpRdaag8zYTEkhxdhrvGpU6zK"
+    PINECONE_ENVIRONMENT = "us-east-1"
+    PINECONE_INDEX_NAME = "ai"
+    JWT_SECRET = "8d3f92f9bfa4e2c8b7c9d52b4e6a7f0c3d1e5f7a9b2c4d6e8f1a3b5c7d9e1f2"
+}
+
+$varString = ($envVars.GetEnumerator() | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ","
+
+aws lambda update-function-configuration --function-name aawaz-backend-api --environment "Variables={$varString}"

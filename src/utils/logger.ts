@@ -20,22 +20,28 @@ const consoleFormat = winston.format.combine(
   })
 );
 
+const isLambda = !!process.env.LAMBDA_TASK_ROOT;
+
+const transportsList: winston.transport[] = [];
+
+if (!isLambda) {
+  transportsList.push(
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  );
+}
+
+transportsList.push(
+  new winston.transports.Console({
+    format: consoleFormat,
+  })
+);
+
 export const logger = winston.createLogger({
   level: config.logLevel,
   format: logFormat,
   defaultMeta: { service: 'rural-digital-rights' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+  transports: transportsList,
 });
-
-if (config.nodeEnv !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: consoleFormat,
-    })
-  );
-}
 
 export default logger;

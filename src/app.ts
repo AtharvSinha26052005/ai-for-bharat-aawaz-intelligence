@@ -53,12 +53,14 @@ export function createApp(): Application {
 
   // CORS configuration
   app.use(cors({
-    origin: config.nodeEnv === 'production' 
-      ? ['https://yourdomain.com'] 
-      : '*',
+    origin: [
+      'https://d14gfq1u1sly2k.cloudfront.net',
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
   }));
 
   // Body parsing middleware
@@ -75,14 +77,17 @@ export function createApp(): Application {
   app.use(generalRateLimiter);
 
   // Health check endpoint
-  app.get('/health', (req, res) => {
+  const healthHandler = (req: express.Request, res: express.Response) => {
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: config.nodeEnv,
     });
-  });
+  };
+
+  app.get('/health', healthHandler);
+  app.get('/api/v1/health', healthHandler);
 
   // Metrics endpoint for Prometheus
   app.get('/metrics', async (req, res) => {
@@ -92,14 +97,24 @@ export function createApp(): Application {
 
   // API routes
   logger.info('Registering API routes...');
-  app.use('/api/v1/interact', interactionRoutes);
-  app.use('/api/v1/profile', profileRoutes);
-  app.use('/api/v1/schemes', schemeRoutes);
-  app.use('/api/v1/applications', applicationRoutes);
-  app.use('/api/v1/fraud', fraudRoutes);
-  app.use('/api/v1/education', educationRoutes);
-  app.use('/api/v1/admin', adminRoutes);
-  app.use('/api/v1/compliance', complianceRoutes);
+  
+  // Register with and without /api/v1 prefix for resilience
+  const routes = [
+    ['/interact', interactionRoutes],
+    ['/profile', profileRoutes],
+    ['/schemes', schemeRoutes],
+    ['/applications', applicationRoutes],
+    ['/fraud', fraudRoutes],
+    ['/education', educationRoutes],
+    ['/admin', adminRoutes],
+    ['/compliance', complianceRoutes],
+  ];
+
+  routes.forEach(([path, router]) => {
+    app.use(`/api/v1${path}`, router as any);
+    app.use(path as string, router as any);
+  });
+  
   logger.info('API routes registered successfully');
 
   // 404 handler
