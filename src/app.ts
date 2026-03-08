@@ -61,6 +61,7 @@ export function createApp(): Application {
       origin: [
         'https://d14gfq1u1sly2k.cloudfront.net',
         'http://localhost:3000',
+        'http://localhost:3001',
         'http://localhost:5173',
       ],
       credentials: true,

@@ -21,6 +21,18 @@ export function errorHandler(
     ip: req.ip,
   });
 
+  // Handle database connection errors
+  if (err.message?.includes('does not support SSL') || (err as any).code === 'ECONNREFUSED') {
+    res.status(503).json({
+      success: false,
+      error: {
+        code: 'DATABASE_CONNECTION_ERROR',
+        message: 'Database connection failed',
+      },
+    });
+    return;
+  }
+
   // Handle validation errors
   if (err instanceof ValidationError) {
     res.status(400).json({

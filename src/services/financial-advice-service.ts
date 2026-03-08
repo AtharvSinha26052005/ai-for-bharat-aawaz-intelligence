@@ -1,8 +1,12 @@
 import logger from '../utils/logger';
 import { FinancialAdviceRequest, FinancialAdviceResponse } from '../types/interested-schemes';
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+if (!GROQ_API_KEY) {
+  throw new Error('GROQ_API_KEY environment variable is not configured');
+}
 
 export class FinancialAdviceService {
   async getFinancialAdvice(request: FinancialAdviceRequest): Promise<FinancialAdviceResponse> {
