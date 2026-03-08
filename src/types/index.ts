@@ -8,9 +8,12 @@ export type IncomeRange = 'below-1L' | '1L-3L' | '3L-5L' | 'above-5L';
 export interface UserProfile {
   userId: string;
   phoneNumber?: string;
+  aadharNumber?: string; // Encrypted
   age: number;
   incomeRange: IncomeRange;
   occupation: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  caste?: 'General' | 'OBC' | 'SC' | 'ST' | 'Other';
   familyComposition: FamilyComposition;
   location: Location;
   primaryNeeds: string[];
@@ -21,6 +24,15 @@ export interface UserProfile {
   createdAt: Date;
   updatedAt: Date;
   lastActiveAt: Date;
+}
+
+// Semantic search profile for AI-powered scheme recommendations
+export interface SemanticSearchProfile {
+  age: number;
+  income: number;
+  gender: 'Male' | 'Female' | 'Other';
+  caste: 'General' | 'OBC' | 'SC' | 'ST' | 'Other';
+  state: string;
 }
 
 export interface FamilyComposition {

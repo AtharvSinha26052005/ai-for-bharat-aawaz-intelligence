@@ -33,6 +33,12 @@ export class VoiceService {
       return;
     }
 
+    // Don't start if already listening
+    if (this.isListening) {
+      console.warn('Already listening');
+      return;
+    }
+
     this.recognition.lang = this.getLanguageCode(language);
     this.isListening = true;
 
@@ -51,13 +57,28 @@ export class VoiceService {
       this.isListening = false;
     };
 
-    this.recognition.start();
+    try {
+      this.recognition.start();
+    } catch (err: any) {
+      // Handle case where recognition is already started
+      if (err.message?.includes('already started')) {
+        this.isListening = false;
+        onError?.('Please wait a moment and try again');
+      } else {
+        onError?.(err.message || 'Failed to start recognition');
+      }
+    }
   }
 
   // Stop listening
   stopListening(): void {
     if (this.recognition && this.isListening) {
-      this.recognition.stop();
+      try {
+        this.recognition.stop();
+      } catch (err) {
+        // Ignore errors when stopping
+        console.warn('Error stopping recognition:', err);
+      }
       this.isListening = false;
     }
   }

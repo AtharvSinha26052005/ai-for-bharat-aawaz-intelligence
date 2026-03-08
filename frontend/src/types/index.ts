@@ -1,12 +1,16 @@
 // Language types
-export type Language = 'hi' | 'ta' | 'te' | 'bn' | 'mr' | 'en';
+export type Language = 'hi' | 'ta' | 'bn' | 'mr' | 'en';
 
 // User Profile
 export interface UserProfile {
   userId: string;
+  phoneNumber?: string;
+  aadharNumber?: string; // Encrypted
   age: number;
   incomeRange: string;
   occupation: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  caste?: 'General' | 'OBC' | 'SC' | 'ST' | 'Other';
   location: {
     state: string;
     district: string;
@@ -16,6 +20,15 @@ export interface UserProfile {
   };
   preferredLanguage: Language;
   preferredMode: 'voice' | 'text' | 'both';
+}
+
+// Semantic search profile for AI-powered scheme recommendations
+export interface SemanticSearchProfile {
+  age: number;
+  income: number;
+  gender: 'Male' | 'Female' | 'Other';
+  caste: 'General' | 'OBC' | 'SC' | 'ST' | 'Other';
+  state: string;
 }
 
 // Government Scheme

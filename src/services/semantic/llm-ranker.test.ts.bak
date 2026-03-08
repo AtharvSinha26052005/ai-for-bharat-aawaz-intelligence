@@ -1,0 +1,415 @@
+import { LLMRankerService } from './llm-ranker';
+import { SearchResult } from './vector-store';
+import { SemanticSearchProfile } from '../../types';
+
+// Mock environment variables
+process.env.GROQ_API_KEY = 'test-api-key';
+
+describe('LLMRankerService', () => {
+  let service: LLMRankerService;
+  let mockFetch: jest.SpyInstance;
+
+  const mockProfile: SemanticSearchProfile = {
+    age: 25,
+    income: 200000,
+    gender: 'Female',
+    caste: 'OBC',
+    state: 'Maharashtra',
+  };
+
+  const mockScheme: SearchResult = {
+    id: 'scheme-1',
+    score: 0.85,
+    metadata: {
+      scheme_id: 'scheme-1',
+      name: 'Women Entrepreneurship Scheme',
+      slug: 'women-entrepreneurship',
+      ministry: 'Ministry of Women and Child Development',
+      category: 'women_welfare',
+      level: 'central',
+    },
+  };
+
+  beforeEach(() => {
+    service = new LLMRankerService();
+    mockFetch = jest.spyOn(global, 'fetch');
+  });
+
+  afterEach(() => {
+    mockFetch.mockRestore();
+  });
+
+  describe('analyzeEligibility', () => {
+    it('should successfully analyze eligibility with valid response', async () => {
+      const mockResponse = {
+        eligible: true,
+        confidence: 0.85,
+        reasoning: 'User meets age and gender criteria for women entrepreneurship scheme',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify(mockResponse),
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      expect(result.eligible).toBe(true);
+      expect(result.confidence).toBe(0.85);
+      expect(result.reasoning).toContain('women entrepreneurship');
+    });
+
+    it('should handle JSON response wrapped in markdown code blocks', async () => {
+      const mockResponse = {
+        eligible: true,
+        confidence: 0.9,
+        reasoning: 'Eligible based on profile',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: '```json\n' + JSON.stringify(mockResponse) + '\n```',
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      expect(result.eligible).toBe(true);
+      expect(result.confidence).toBe(0.9);
+    });
+
+    it('should clamp confidence values outside 0-1 range', async () => {
+      const mockResponse = {
+        eligible: true,
+        confidence: 1.5, // Invalid: > 1
+        reasoning: 'Test reasoning',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify(mockResponse),
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      expect(result.confidence).toBe(1); // Clamped to 1
+    });
+
+    it('should return fallback analysis on API error', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: async () => 'Server error',
+      } as Response);
+
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      expect(result.eligible).toBe(false);
+      expect(result.confidence).toBe(0.1);
+      expect(result.reasoning).toContain('service error');
+    });
+
+    it('should return fallback analysis on malformed JSON', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: 'This is not valid JSON',
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      expect(result.eligible).toBe(false);
+      expect(result.confidence).toBe(0.1);
+      expect(result.reasoning).toContain('Unable to parse');
+    });
+
+    it('should return fallback analysis on missing required fields', async () => {
+      const invalidResponse = {
+        eligible: true,
+        // Missing confidence and reasoning
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify(invalidResponse),
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      expect(result.eligible).toBe(false);
+      expect(result.confidence).toBe(0.1);
+    });
+  });
+
+  describe('batchAnalyze', () => {
+    it('should analyze multiple schemes and return eligible ones sorted by confidence', async () => {
+      const schemes: SearchResult[] = [
+        {
+          id: 'scheme-1',
+          score: 0.9,
+          metadata: {
+            scheme_id: 'scheme-1',
+            name: 'Scheme 1',
+            slug: 'scheme-1',
+            ministry: 'Ministry 1',
+          },
+        },
+        {
+          id: 'scheme-2',
+          score: 0.8,
+          metadata: {
+            scheme_id: 'scheme-2',
+            name: 'Scheme 2',
+            slug: 'scheme-2',
+            ministry: 'Ministry 2',
+          },
+        },
+        {
+          id: 'scheme-3',
+          score: 0.7,
+          metadata: {
+            scheme_id: 'scheme-3',
+            name: 'Scheme 3',
+            slug: 'scheme-3',
+            ministry: 'Ministry 3',
+          },
+        },
+      ];
+
+      // Mock responses with different eligibility and confidence
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    eligible: true,
+                    confidence: 0.7,
+                    reasoning: 'Eligible for scheme 1',
+                  }),
+                },
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    eligible: false,
+                    confidence: 0.3,
+                    reasoning: 'Not eligible for scheme 2',
+                  }),
+                },
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    eligible: true,
+                    confidence: 0.9,
+                    reasoning: 'Highly eligible for scheme 3',
+                  }),
+                },
+              },
+            ],
+          }),
+        });
+
+      const results = await service.batchAnalyze(mockProfile, schemes);
+
+      // Should only return eligible schemes
+      expect(results).toHaveLength(2);
+
+      // Should be sorted by confidence (descending)
+      expect(results[0].schemeId).toBe('scheme-3');
+      expect(results[0].eligibility.confidence).toBe(0.9);
+      expect(results[1].schemeId).toBe('scheme-1');
+      expect(results[1].eligibility.confidence).toBe(0.7);
+    });
+
+    it('should handle empty schemes array', async () => {
+      const results = await service.batchAnalyze(mockProfile, []);
+
+      expect(results).toHaveLength(0);
+    });
+
+    it('should include scheme metadata in results', async () => {
+      const schemes: SearchResult[] = [
+        {
+          id: 'scheme-1',
+          score: 0.85,
+          metadata: {
+            scheme_id: 'scheme-1',
+            name: 'Test Scheme',
+            slug: 'test-scheme',
+            ministry: 'Test Ministry',
+            category: 'education',
+            level: 'central',
+            state: 'Maharashtra',
+          },
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  eligible: true,
+                  confidence: 0.8,
+                  reasoning: 'Eligible',
+                }),
+              },
+            },
+          ],
+        }),
+      });
+
+      const results = await service.batchAnalyze(mockProfile, schemes);
+
+      expect(results[0].name).toBe('Test Scheme');
+      expect(results[0].slug).toBe('test-scheme');
+      expect(results[0].similarityScore).toBe(0.85);
+      expect(results[0].metadata.ministry).toBe('Test Ministry');
+      expect(results[0].metadata.category).toBe('education');
+      expect(results[0].metadata.level).toBe('central');
+      expect(results[0].metadata.state).toBe('Maharashtra');
+    });
+  });
+
+  describe('buildPrompt', () => {
+    it('should build a properly formatted prompt', () => {
+      // Access private method through type assertion
+      const prompt = (service as any).buildPrompt(mockProfile, mockScheme);
+
+      expect(prompt).toContain('Age: 25 years');
+      expect(prompt).toContain('Gender: Female');
+      expect(prompt).toContain('₹2,00,000');
+      expect(prompt).toContain('Caste Category: OBC');
+      expect(prompt).toContain('State: Maharashtra');
+      expect(prompt).toContain('Women Entrepreneurship Scheme');
+      expect(prompt).toContain('Ministry of Women and Child Development');
+      expect(prompt).toContain('JSON');
+    });
+  });
+
+  describe('parseResponse', () => {
+    it('should parse valid JSON response', () => {
+      const response = JSON.stringify({
+        eligible: true,
+        confidence: 0.85,
+        reasoning: 'Test reasoning',
+      });
+
+      const result = (service as any).parseResponse(response);
+
+      expect(result.eligible).toBe(true);
+      expect(result.confidence).toBe(0.85);
+      expect(result.reasoning).toBe('Test reasoning');
+    });
+
+    it('should handle markdown code blocks', () => {
+      const response = '```json\n{"eligible": true, "confidence": 0.9, "reasoning": "Test"}\n```';
+
+      const result = (service as any).parseResponse(response);
+
+      expect(result.eligible).toBe(true);
+      expect(result.confidence).toBe(0.9);
+    });
+
+    it('should return fallback on invalid JSON', () => {
+      const response = 'Not valid JSON';
+
+      const result = (service as any).parseResponse(response);
+
+      expect(result.eligible).toBe(false);
+      expect(result.confidence).toBe(0.1);
+      expect(result.reasoning).toContain('Unable to parse');
+    });
+
+    it('should return fallback on missing fields', () => {
+      const response = JSON.stringify({
+        eligible: true,
+        // Missing confidence and reasoning
+      });
+
+      const result = (service as any).parseResponse(response);
+
+      expect(result.eligible).toBe(false);
+      expect(result.confidence).toBe(0.1);
+    });
+
+    it('should clamp confidence to 0-1 range', () => {
+      const response1 = JSON.stringify({
+        eligible: true,
+        confidence: 1.5,
+        reasoning: 'Test',
+      });
+
+      const result1 = (service as any).parseResponse(response1);
+      expect(result1.confidence).toBe(1);
+
+      const response2 = JSON.stringify({
+        eligible: true,
+        confidence: -0.5,
+        reasoning: 'Test',
+      });
+
+      const result2 = (service as any).parseResponse(response2);
+      expect(result2.confidence).toBe(0);
+    });
+  });
+});

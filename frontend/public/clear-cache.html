@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Cache</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+        .success {
+            color: green;
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clear Service Worker & Cache</h1>
+    <p>Click the button below to unregister the service worker and clear all caches.</p>
+    
+    <button onclick="clearEverything()">Clear All Cache & Service Workers</button>
+    <button onclick="goToSchemes()">Go to Schemes Page</button>
+    
+    <div id="message"></div>
+
+    <script>
+        async function clearEverything() {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = '<p>Clearing...</p>';
+            
+            try {
+                // Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    messageDiv.innerHTML += '<p class="success">✓ Service workers unregistered</p>';
+                }
+                
+                // Clear all caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (let cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                    }
+                    messageDiv.innerHTML += '<p class="success">✓ All caches cleared</p>';
+                }
+                
+                // Clear localStorage
+                localStorage.clear();
+                messageDiv.innerHTML += '<p class="success">✓ LocalStorage cleared</p>';
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                messageDiv.innerHTML += '<p class="success">✓ SessionStorage cleared</p>';
+                
+                messageDiv.innerHTML += '<p class="success"><strong>✓ All done! Now refresh the page or click "Go to Schemes Page"</strong></p>';
+                
+            } catch (error) {
+                messageDiv.innerHTML += `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        function goToSchemes() {
+            window.location.href = '/schemes';
+        }
+    </script>
+</body>
+</html>

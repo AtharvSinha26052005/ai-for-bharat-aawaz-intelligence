@@ -1,0 +1,10 @@
+# Python dependencies for embedding generation and vector database
+
+# Vector embeddings
+sentence-transformers==2.3.1
+
+# Vector database
+pinecone-client==3.0.0
+
+# Progress bar
+tqdm==4.66.1

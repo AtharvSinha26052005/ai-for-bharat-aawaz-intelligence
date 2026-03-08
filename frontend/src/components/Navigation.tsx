@@ -25,6 +25,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from 'react-router-dom';
 import { Language } from '../types';
 import { LANGUAGES } from '../config/api';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface NavigationProps {
   language: Language;
@@ -33,16 +34,17 @@ interface NavigationProps {
 
 export const Navigation: React.FC<NavigationProps> = ({ language, onLanguageChange }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation(language);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [langMenuAnchor, setLangMenuAnchor] = useState<null | HTMLElement>(null);
 
   const menuItems = [
-    { text: 'Home', icon: <HomeIcon />, path: '/' },
-    { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
-    { text: 'Schemes', icon: <AccountBalanceIcon />, path: '/schemes' },
-    { text: 'Applications', icon: <AssignmentIcon />, path: '/applications' },
-    { text: 'Fraud Check', icon: <SecurityIcon />, path: '/fraud-check' },
-    { text: 'Learn Finance', icon: <SchoolIcon />, path: '/education' },
+    { text: t.nav.home, icon: <HomeIcon />, path: '/' },
+    { text: t.nav.profile, icon: <PersonIcon />, path: '/profile' },
+    { text: t.nav.schemes, icon: <AccountBalanceIcon />, path: '/schemes' },
+    { text: t.nav.applications, icon: <AssignmentIcon />, path: '/applications' },
+    { text: t.nav.fraudCheck, icon: <SecurityIcon />, path: '/fraud-check' },
+    { text: t.nav.learnFinance, icon: <SchoolIcon />, path: '/education' },
   ];
 
   const handleDrawerToggle = () => {
@@ -81,7 +83,7 @@ export const Navigation: React.FC<NavigationProps> = ({ language, onLanguageChan
           </IconButton>
           
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Rural Digital Rights
+            {t.nav.appTitle}
           </Typography>
 
           <IconButton color="inherit" onClick={handleLanguageMenuOpen}>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Profile Form</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0 15px 0; }
+        button { padding: 10px 20px; background: #1976d2; color: white; border: none; cursor: pointer; margin-right: 10px; }
+        button.secondary { background: #757575; }
+        .result { margin-top: 20px; padding: 15px; background: #f0f0f0; }
+        .scheme { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+        .search-method { background: #e8f5e9; padding: 10px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Test Profile & Scheme Search</h1>
+    
+    <form id="profileForm">
+        <label>Age:</label>
+        <input type="number" id="age" value="22" required>
+        
+        <label>Income Range:</label>
+        <select id="income_range">
+            <option value="below-1L">Below ₹1 Lakh</option>
+            <option value="1L-3L">₹1-3 Lakhs</option>
+            <option value="3L-5L">₹3-5 Lakhs</option>
+            <option value="above-5L">Above ₹5 Lakhs</option>
+        </select>
+        
+        <label>Gender:</label>
+        <select id="gender">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+        </select>
+        
+        <label>Caste:</label>
+        <select id="caste">
+            <option value="SC">SC</option>
+            <option value="ST">ST</option>
+            <option value="OBC">OBC</option>
+            <option value="General">General</option>
+        </select>
+        
+        <label>Occupation:</label>
+        <input type="text" id="occupation" value="Student" required>
+        
+        <label>State:</label>
+        <input type="text" id="state" value="Tamil Nadu" required>
+        
+        <label>District:</label>
+        <input type="text" id="district" value="Chennai" required>
+        
+        <label>Phone:</label>
+        <input type="text" id="phone_number" value="9876543210">
+        
+        <label>Aadhar:</label>
+        <input type="text" id="aadhar_number" value="123456789012">
+        
+        <button type="submit">Save Profile & Search (Enhanced)</button>
+        <button type="button" class="secondary" onclick="submitWithPinecone()">Save Profile & Search (Pinecone)</button>
+    </form>
+    
+    <div id="result" class="result" style="display:none;"></div>
+    
+    <script>
+        async function searchSchemes(profileId, usePinecone = false) {
+            const searchUrl = usePinecone 
+                ? `http://localhost:3000/api/v1/profiles/${profileId}/schemes?pinecone=true`
+                : `http://localhost:3000/api/v1/profiles/${profileId}/schemes`;
+            
+            console.log('Searching schemes for profile:', profileId, 'usePinecone:', usePinecone);
+            const searchResponse = await fetch(searchUrl);
+            
+            if (!searchResponse.ok) {
+                const errorText = await searchResponse.text();
+                throw new Error(`Failed to search schemes: ${searchResponse.status} - ${errorText}`);
+            }
+            
+            const searchResult = await searchResponse.json();
+            console.log('Search result:', searchResult);
+            console.log('Data type:', typeof searchResult.data);
+            console.log('Is array:', Array.isArray(searchResult.data));
+            console.log('Data length:', searchResult.data ? searchResult.data.length : 'undefined');
+            
+            // Check if data exists and is an array
+            if (!searchResult.data) {
+                throw new Error('No data returned from server');
+            }
+            
+            if (!Array.isArray(searchResult.data)) {
+                console.error('Invalid data format:', searchResult.data);
+                throw new Error(`Invalid response format from server - data is not an array (type: ${typeof searchResult.data})`);
+            }
+            
+            if (searchResult.data.length === 0) {
+                document.getElementById('result').innerHTML = `
+                    <h3>✅ Profile Saved!</h3>
+                    <p>Profile ID: ${profileId}</p>
+                    <div class="search-method">
+                        <strong>Search Method:</strong> ${searchResult.search_method || 'unknown'}
+                    </div>
+                    <p>⚠️ No matching schemes found for this profile.</p>
+                `;
+                return;
+            }
+            
+            console.log('Generating HTML for', searchResult.data.length, 'schemes');
+            
+            const schemesHtml = searchResult.data.map((scheme, index) => {
+                console.log(`Scheme ${index}:`, scheme.name, scheme.final_score);
+                return `
+                <div class="scheme">
+                    <h4>${scheme.name || 'Unknown Scheme'}</h4>
+                    <p><strong>Match Score:</strong> ${(scheme.final_score * 100).toFixed(1)}% 
+                       <span style="color: #666; font-size: 0.9em;">
+                       (Semantic: ${(scheme.semantic_score * 100).toFixed(0)}%, 
+                        Eligibility: ${(scheme.eligibility_score * 100).toFixed(0)}%)
+                       </span>
+                    </p>
+                    <p><strong>Category:</strong> ${scheme.is_fallback ? scheme.fallback_category : (scheme.category === 'relevant' ? '🎯 Relevant' : '🔍 Exploratory')}</p>
+                    <p><strong>State Match:</strong> ${scheme.state_match ? '✅ Yes' : '⚠️ No'}</p>
+                    <p><strong>Ministry:</strong> ${scheme.ministry || 'N/A'}</p>
+                    ${scheme.explanation && scheme.explanation.length > 0 ? `
+                        <p><strong>Why this scheme matched:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            ${scheme.explanation.map(exp => `<li>${exp}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    <p style="font-size: 0.9em; color: #555;">${scheme.description ? scheme.description.substring(0, 150) + '...' : ''}</p>
+                    ${scheme.apply_link ? `
+                        <p><a href="${scheme.apply_link}" target="_blank" style="display: inline-block; padding: 8px 16px; background: #1976d2; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9em; margin-top: 10px;">Apply Now →</a></p>
+                    ` : ''}
+                </div>
+            `;
+            }).join('');
+            
+            console.log('HTML generated successfully');
+            
+            document.getElementById('result').innerHTML = `
+                <h3>✅ Profile Saved!</h3>
+                <p>Profile ID: ${profileId}</p>
+                
+                <div class="search-method">
+                    <strong>🔍 Search Method:</strong> ${searchResult.search_method === 'pinecone' ? 'Pinecone Vector Search with Hard Filtering' : 'Enhanced Keyword Search'}
+                </div>
+                
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                    <h4 style="margin-top: 0;">🤖 Generated Search Query (by Groq LLM):</h4>
+                    <p style="font-style: italic; color: #1565c0;">"${searchResult.generated_query}"</p>
+                </div>
+                
+                <h3>Top ${searchResult.data.length} Matching Schemes:</h3>
+                ${schemesHtml}
+            `;
+        }
+        
+        async function submitWithPinecone() {
+            const form = document.getElementById('profileForm');
+            const event = new Event('submit', { cancelable: true });
+            event.usePinecone = true;
+            form.dispatchEvent(event);
+        }
+        
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const usePinecone = e.usePinecone || false;
+            
+            const profileData = {
+                age: parseInt(document.getElementById('age').value),
+                income_range: document.getElementById('income_range').value,
+                gender: document.getElementById('gender').value,
+                caste: document.getElementById('caste').value,
+                occupation: document.getElementById('occupation').value,
+                state: document.getElementById('state').value,
+                district: document.getElementById('district').value,
+                phone_number: document.getElementById('phone_number').value,
+                aadhar_number: document.getElementById('aadhar_number').value,
+                preferred_mode: 'both',
+                block: '',
+                village: '',
+                pincode: ''
+            };
+            
+            try {
+                // Step 1: Save profile
+                console.log('Saving profile...', profileData);
+                const saveResponse = await fetch('http://localhost:3000/api/v1/profiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profileData)
+                });
+                
+                if (!saveResponse.ok) {
+                    const errorText = await saveResponse.text();
+                    throw new Error(`Failed to save profile: ${saveResponse.status} - ${errorText}`);
+                }
+                
+                const saveResult = await saveResponse.json();
+                console.log('Save result:', saveResult);
+                
+                if (!saveResult.data || !saveResult.data.profile_id) {
+                    throw new Error('No profile_id returned from server');
+                }
+                
+                const profileId = saveResult.data.profile_id;
+                
+                document.getElementById('result').innerHTML = `
+                    <h3>✅ Profile Saved!</h3>
+                    <p>Profile ID: ${profileId}</p>
+                    <p>Loading schemes...</p>
+                `;
+                document.getElementById('result').style.display = 'block';
+                
+                // Step 2: Search schemes
+                await searchSchemes(profileId, usePinecone);
+                
+            } catch (error) {
+                console.error('Error occurred:', error);
+                document.getElementById('result').innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message}</p>
+                    <p style="font-size: 0.9em; color: #666;">Check browser console for details</p>
+                `;
+                document.getElementById('result').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

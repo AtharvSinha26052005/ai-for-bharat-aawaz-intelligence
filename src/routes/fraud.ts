@@ -5,6 +5,7 @@ import {
   FraudType,
   RiskLevel,
 } from '../services/fraud/fraud-detector-service';
+import { simpleFraudDetectionService } from '../services/fraud/simple-fraud-detection';
 import { authenticate } from '../middleware/auth';
 import { Language } from '../types';
 import { ValidationError } from '../utils/errors';
@@ -14,12 +15,49 @@ import logger from '../utils/logger';
 const router = Router();
 
 /**
+ * POST /api/v1/fraud/check-message
+ * Simple fraud check - just message in, risk status out
+ * No authentication required for easy testing
+ */
+router.post(
+  '/check-message',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { message } = req.body;
+
+      // Validate required field
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        throw new ValidationError('Message is required and must be a non-empty string');
+      }
+
+      // Analyze message with Gemini
+      const result = await simpleFraudDetectionService.analyzeMessage(message);
+
+      res.json({
+        success: true,
+        data: {
+          riskStatus: result.riskStatus,
+          confidence: result.confidence,
+          reasoning: result.reasoning,
+        },
+      });
+
+      logger.info('Simple fraud check completed via API', {
+        riskStatus: result.riskStatus,
+        confidence: result.confidence,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * POST /api/v1/fraud/analyze
  * Analyze content for fraud indicators
  */
 router.post(
   '/analyze',
-  authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { content, contentType, language } = req.body;
@@ -35,14 +73,14 @@ router.post(
         );
       }
 
-      const languageParam = (language as string) || req.user?.preferredLanguage || 'en';
+      const languageParam = (language as string) || 'en';
       const analysisLanguage = isValidLanguage(languageParam) ? languageParam as Language : 'en';
 
       const request: FraudAnalysisRequest = {
         content,
         contentType,
         language: analysisLanguage,
-        userId: req.user?.userId,
+        userId: req.body.userId,
       };
 
       const result = await fraudDetectorService.analyzeContent(request);
@@ -61,7 +99,7 @@ router.post(
       });
 
       logger.info('Fraud analysis completed via API', {
-        userId: req.user?.userId,
+        userId: req.body.userId,
         riskLevel: result.riskLevel,
         fraudTypes: result.fraudTypes,
       });

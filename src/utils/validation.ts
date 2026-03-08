@@ -20,9 +20,9 @@ export const userProfileSchema = Joi.object({
   location: Joi.object({
     state: Joi.string().required(),
     district: Joi.string().required(),
-    block: Joi.string().optional(),
-    village: Joi.string().optional(),
-    pincode: Joi.string().pattern(/^\d{6}$/).optional(),
+    block: Joi.string().empty('').optional(),
+    village: Joi.string().empty('').optional(),
+    pincode: Joi.string().pattern(/^\d{6}$/).empty('').optional(),
     coordinates: Joi.object({
       latitude: Joi.number().min(-90).max(90),
       longitude: Joi.number().min(-180).max(180),

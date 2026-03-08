@@ -1,0 +1,484 @@
+import { SemanticSearchService, SemanticSearchRequest } from './semantic-search';
+import { embeddingGeneratorService } from './embedding-generator';
+import { vectorStoreService } from './vector-store';
+import { llmRankerService } from './llm-ranker';
+import { BadRequestError, ExternalServiceError } from '../../utils/errors';
+import { SearchResult } from './vector-store';
+import { RankedScheme } from './llm-ranker';
+import { redis } from '../../db/redis';
+
+// Mock dependencies
+jest.mock('./embedding-generator');
+jest.mock('./vector-store');
+jest.mock('./llm-ranker');
+jest.mock('../../db/redis');
+
+describe('SemanticSearchService', () => {
+  let service: SemanticSearchService;
+
+  beforeEach(() => {
+    service = new SemanticSearchService();
+    jest.clearAllMocks();
+    // Mock Redis methods
+    (redis.get as jest.Mock).mockResolvedValue(null);
+    (redis.set as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  describe('search', () => {
+    const validRequest: SemanticSearchRequest = {
+      age: 30,
+      income: 250000,
+      gender: 'Male',
+      caste: 'OBC',
+      state: 'Maharashtra',
+    };
+
+    const mockEmbeddingResult = {
+      vector: new Array(384).fill(0).map(() => Math.random()),
+      dimensions: 384,
+      model: 'all-MiniLM-L6-v2',
+    };
+
+    const mockSearchResults: SearchResult[] = [
+      {
+        id: 'scheme-1',
+        score: 0.95,
+        metadata: {
+          scheme_id: 'scheme-1',
+          name: 'PM Kisan Yojana',
+          slug: 'pm-kisan',
+          ministry: 'Agriculture',
+          category: 'agriculture',
+          level: 'central',
+        },
+      },
+      {
+        id: 'scheme-2',
+        score: 0.88,
+        metadata: {
+          scheme_id: 'scheme-2',
+          name: 'Ayushman Bharat',
+          slug: 'ayushman-bharat',
+          ministry: 'Health',
+          category: 'health',
+          level: 'central',
+        },
+      },
+    ];
+
+    const mockRankedSchemes: RankedScheme[] = [
+      {
+        schemeId: 'scheme-1',
+        name: 'PM Kisan Yojana',
+        slug: 'pm-kisan',
+        similarityScore: 0.95,
+        eligibility: {
+          eligible: true,
+          confidence: 0.9,
+          reasoning: 'User meets all eligibility criteria for farmer support scheme',
+        },
+        metadata: {
+          ministry: 'Agriculture',
+          category: 'agriculture',
+          level: 'central',
+        },
+      },
+      {
+        schemeId: 'scheme-2',
+        name: 'Ayushman Bharat',
+        slug: 'ayushman-bharat',
+        similarityScore: 0.88,
+        eligibility: {
+          eligible: true,
+          confidence: 0.85,
+          reasoning: 'User qualifies for health insurance coverage',
+        },
+        metadata: {
+          ministry: 'Health',
+          category: 'health',
+          level: 'central',
+        },
+      },
+    ];
+
+    it('should successfully perform semantic search and return recommendations', async () => {
+      // Mock service responses
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(mockRankedSchemes);
+
+      const result = await service.search(validRequest);
+
+      // Verify service calls
+      expect(embeddingGeneratorService.generateProfileEmbedding).toHaveBeenCalledWith({
+        age: 30,
+        income: 250000,
+        gender: 'Male',
+        caste: 'OBC',
+        state: 'Maharashtra',
+      });
+      expect(vectorStoreService.search).toHaveBeenCalledWith(mockEmbeddingResult.vector, 10);
+      expect(llmRankerService.batchAnalyze).toHaveBeenCalledWith(
+        expect.objectContaining({
+          age: 30,
+          income: 250000,
+          gender: 'Male',
+          caste: 'OBC',
+          state: 'Maharashtra',
+        }),
+        mockSearchResults
+      );
+
+      // Verify result structure
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        schemeId: 'scheme-1',
+        name: 'PM Kisan Yojana',
+        slug: 'pm-kisan',
+        ministry: 'Agriculture',
+        category: 'agriculture',
+        level: 'central',
+        similarityScore: 0.95,
+        confidence: 0.9,
+        reasoning: 'User meets all eligibility criteria for farmer support scheme',
+      });
+    });
+
+    it('should return top 5 schemes when more than 5 are eligible', async () => {
+      const manyRankedSchemes: RankedScheme[] = Array.from({ length: 8 }, (_, i) => ({
+        schemeId: `scheme-${i + 1}`,
+        name: `Scheme ${i + 1}`,
+        slug: `scheme-${i + 1}`,
+        similarityScore: 0.9 - i * 0.05,
+        eligibility: {
+          eligible: true,
+          confidence: 0.9 - i * 0.05,
+          reasoning: `Eligible for scheme ${i + 1}`,
+        },
+        metadata: {
+          ministry: 'Test Ministry',
+          category: 'test',
+          level: 'central',
+        },
+      }));
+
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(manyRankedSchemes);
+
+      const result = await service.search(validRequest);
+
+      expect(result).toHaveLength(5);
+      expect(result[0].schemeId).toBe('scheme-1');
+      expect(result[4].schemeId).toBe('scheme-5');
+    });
+
+    it('should return empty array when no similar schemes found', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.search(validRequest);
+
+      expect(result).toEqual([]);
+      expect(llmRankerService.batchAnalyze).not.toHaveBeenCalled();
+    });
+
+    it('should return empty array when no schemes are eligible', async () => {
+      const ineligibleSchemes: RankedScheme[] = [
+        {
+          schemeId: 'scheme-1',
+          name: 'PM Kisan Yojana',
+          slug: 'pm-kisan',
+          similarityScore: 0.95,
+          eligibility: {
+            eligible: false,
+            confidence: 0.3,
+            reasoning: 'User does not meet eligibility criteria',
+          },
+          metadata: {
+            ministry: 'Agriculture',
+          },
+        },
+      ];
+
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(ineligibleSchemes);
+
+      const result = await service.search(validRequest);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw BadRequestError for invalid age', async () => {
+      const invalidRequest = { ...validRequest, age: -5 };
+
+      await expect(service.search(invalidRequest)).rejects.toThrow(BadRequestError);
+      await expect(service.search(invalidRequest)).rejects.toThrow(
+        'Age must be a number between 0 and 120'
+      );
+    });
+
+    it('should throw BadRequestError for invalid income', async () => {
+      const invalidRequest = { ...validRequest, income: -1000 };
+
+      await expect(service.search(invalidRequest)).rejects.toThrow(BadRequestError);
+      await expect(service.search(invalidRequest)).rejects.toThrow(
+        'Income must be a non-negative number'
+      );
+    });
+
+    it('should throw BadRequestError for invalid gender', async () => {
+      const invalidRequest = { ...validRequest, gender: 'Invalid' };
+
+      await expect(service.search(invalidRequest)).rejects.toThrow(BadRequestError);
+      await expect(service.search(invalidRequest)).rejects.toThrow(
+        'Gender must be one of: Male, Female, Other'
+      );
+    });
+
+    it('should throw BadRequestError for invalid caste', async () => {
+      const invalidRequest = { ...validRequest, caste: 'Invalid' };
+
+      await expect(service.search(invalidRequest)).rejects.toThrow(BadRequestError);
+      await expect(service.search(invalidRequest)).rejects.toThrow(
+        'Caste must be one of: General, OBC, SC, ST, Other'
+      );
+    });
+
+    it('should throw BadRequestError for empty state', async () => {
+      const invalidRequest = { ...validRequest, state: '' };
+
+      await expect(service.search(invalidRequest)).rejects.toThrow(BadRequestError);
+      await expect(service.search(invalidRequest)).rejects.toThrow(
+        'State is required and must be a non-empty string'
+      );
+    });
+
+    it('should throw BadRequestError for multiple validation errors', async () => {
+      const invalidRequest = {
+        age: 150,
+        income: -500,
+        gender: 'Invalid',
+        caste: 'Invalid',
+        state: '',
+      };
+
+      await expect(service.search(invalidRequest)).rejects.toThrow(BadRequestError);
+    });
+
+    it('should handle embedding generation failure', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockRejectedValue(
+        new ExternalServiceError('Embedding API failed', 'EMBEDDING_API_ERROR')
+      );
+
+      await expect(service.search(validRequest)).rejects.toThrow(ExternalServiceError);
+    });
+
+    it('should handle vector store search failure', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockRejectedValue(
+        new ExternalServiceError('Pinecone query failed', 'PINECONE_QUERY_FAILED')
+      );
+
+      await expect(service.search(validRequest)).rejects.toThrow(ExternalServiceError);
+    });
+
+    it('should handle LLM analysis failure', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockRejectedValue(
+        new ExternalServiceError('LLM analysis failed', 'LLM_BATCH_ANALYSIS_FAILED')
+      );
+
+      await expect(service.search(validRequest)).rejects.toThrow(ExternalServiceError);
+    });
+
+    it('should wrap unknown errors in ExternalServiceError', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockRejectedValue(
+        new Error('Unknown error')
+      );
+
+      await expect(service.search(validRequest)).rejects.toThrow(ExternalServiceError);
+      await expect(service.search(validRequest)).rejects.toThrow(
+        'Failed to perform semantic search'
+      );
+    });
+  });
+
+  describe('Redis caching', () => {
+    const validRequest: SemanticSearchRequest = {
+      age: 30,
+      income: 250000,
+      gender: 'Male',
+      caste: 'OBC',
+      state: 'Maharashtra',
+    };
+
+    const mockEmbeddingResult = {
+      vector: new Array(384).fill(0).map(() => Math.random()),
+      dimensions: 384,
+      model: 'all-MiniLM-L6-v2',
+    };
+
+    const mockSearchResults: SearchResult[] = [
+      {
+        id: 'scheme-1',
+        score: 0.95,
+        metadata: {
+          scheme_id: 'scheme-1',
+          name: 'PM Kisan Yojana',
+          slug: 'pm-kisan',
+          ministry: 'Agriculture',
+          category: 'agriculture',
+          level: 'central',
+        },
+      },
+    ];
+
+    const mockRankedSchemes: RankedScheme[] = [
+      {
+        schemeId: 'scheme-1',
+        name: 'PM Kisan Yojana',
+        slug: 'pm-kisan',
+        similarityScore: 0.95,
+        eligibility: {
+          eligible: true,
+          confidence: 0.9,
+          reasoning: 'User meets all eligibility criteria',
+        },
+        metadata: {
+          ministry: 'Agriculture',
+          category: 'agriculture',
+          level: 'central',
+        },
+      },
+    ];
+
+    it('should cache search results with 1-hour TTL', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(mockRankedSchemes);
+
+      await service.search(validRequest);
+
+      // Verify cache was set with correct TTL (3600 seconds = 1 hour)
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^search:results:[a-f0-9]{64}$/),
+        expect.any(String),
+        3600
+      );
+    });
+
+    it('should return cached results on cache hit', async () => {
+      const cachedRecommendations = [
+        {
+          schemeId: 'scheme-1',
+          name: 'PM Kisan Yojana',
+          slug: 'pm-kisan',
+          ministry: 'Agriculture',
+          category: 'agriculture',
+          level: 'central',
+          similarityScore: 0.95,
+          confidence: 0.9,
+          reasoning: 'Cached result',
+        },
+      ];
+
+      // Mock cache hit
+      (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(cachedRecommendations));
+
+      const result = await service.search(validRequest);
+
+      // Verify cached results were returned
+      expect(result).toEqual(cachedRecommendations);
+
+      // Verify services were NOT called (cache hit)
+      expect(embeddingGeneratorService.generateProfileEmbedding).not.toHaveBeenCalled();
+      expect(vectorStoreService.search).not.toHaveBeenCalled();
+      expect(llmRankerService.batchAnalyze).not.toHaveBeenCalled();
+    });
+
+    it('should generate cache key using SHA-256 hash of profile', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(mockRankedSchemes);
+
+      await service.search(validRequest);
+
+      // Verify cache key format: search:results:{64-char-hex-hash}
+      expect(redis.get).toHaveBeenCalledWith(
+        expect.stringMatching(/^search:results:[a-f0-9]{64}$/)
+      );
+    });
+
+    it('should generate same cache key for identical profiles', async () => {
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(mockRankedSchemes);
+
+      await service.search(validRequest);
+      const firstCacheKey = (redis.get as jest.Mock).mock.calls[0][0];
+
+      jest.clearAllMocks();
+      (redis.get as jest.Mock).mockResolvedValue(null);
+
+      await service.search(validRequest);
+      const secondCacheKey = (redis.get as jest.Mock).mock.calls[0][0];
+
+      expect(firstCacheKey).toBe(secondCacheKey);
+    });
+
+    it('should handle cache retrieval errors gracefully', async () => {
+      // Mock cache error
+      (redis.get as jest.Mock).mockRejectedValue(new Error('Redis connection failed'));
+
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(mockRankedSchemes);
+
+      // Should not throw, should fall back to normal search
+      const result = await service.search(validRequest);
+
+      expect(result).toHaveLength(1);
+      expect(embeddingGeneratorService.generateProfileEmbedding).toHaveBeenCalled();
+    });
+
+    it('should handle cache storage errors gracefully', async () => {
+      // Mock cache set error
+      (redis.set as jest.Mock).mockRejectedValue(new Error('Redis write failed'));
+
+      (embeddingGeneratorService.generateProfileEmbedding as jest.Mock).mockResolvedValue(
+        mockEmbeddingResult
+      );
+      (vectorStoreService.search as jest.Mock).mockResolvedValue(mockSearchResults);
+      (llmRankerService.batchAnalyze as jest.Mock).mockResolvedValue(mockRankedSchemes);
+
+      // Should not throw, should complete search successfully
+      const result = await service.search(validRequest);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].schemeId).toBe('scheme-1');
+    });
+  });
+});

@@ -12,12 +12,14 @@ import logger from './utils/logger';
 // Import routes
 import interactionRoutes from './routes/interaction';
 import profileRoutes from './routes/profile';
+import profileStorageRoutes from './routes/profile-storage';
 import schemeRoutes from './routes/schemes';
 import applicationRoutes from './routes/applications';
 import fraudRoutes from './routes/fraud';
 import educationRoutes from './routes/education';
 import adminRoutes from './routes/admin';
 import complianceRoutes from './routes/compliance';
+import interestedSchemesRoutes from './routes/interested-schemes';
 
 // Debug: Log route imports
 logger.info('Routes imported', {
@@ -35,33 +37,43 @@ export function createApp(): Application {
   const app = express();
 
   // Security middleware
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+        },
       },
-    },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-  }));
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    })
+  );
 
   // CORS configuration
-  app.use(cors({
-    origin: [
-      'https://d14gfq1u1sly2k.cloudfront.net',
-      'http://localhost:3000',
-      'http://localhost:5173'
-    ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
-  }));
+  app.use(
+    cors({
+      origin: [
+        'https://d14gfq1u1sly2k.cloudfront.net',
+        'http://localhost:3000',
+        'http://localhost:5173',
+      ],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Amz-Date',
+        'X-Api-Key',
+        'X-Amz-Security-Token',
+      ],
+    })
+  );
 
   // Body parsing middleware
   app.use(express.json({ limit: '10mb' }));
@@ -97,24 +109,24 @@ export function createApp(): Application {
 
   // API routes
   logger.info('Registering API routes...');
-  
-  // Register with and without /api/v1 prefix for resilience
+
   const routes = [
     ['/interact', interactionRoutes],
     ['/profile', profileRoutes],
+    ['/profiles', profileStorageRoutes],
     ['/schemes', schemeRoutes],
     ['/applications', applicationRoutes],
     ['/fraud', fraudRoutes],
     ['/education', educationRoutes],
     ['/admin', adminRoutes],
     ['/compliance', complianceRoutes],
+    ['/interested-schemes', interestedSchemesRoutes],
   ];
 
   routes.forEach(([path, router]) => {
     app.use(`/api/v1${path}`, router as any);
-    app.use(path as string, router as any);
   });
-  
+
   logger.info('API routes registered successfully');
 
   // 404 handler

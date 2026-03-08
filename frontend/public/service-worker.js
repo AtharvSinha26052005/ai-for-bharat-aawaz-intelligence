@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'scheme-assistant-v1';
+const CACHE_NAME = 'scheme-assistant-v2'; // Updated version to force cache refresh
 const urlsToCache = [
   '/',
   '/index.html',

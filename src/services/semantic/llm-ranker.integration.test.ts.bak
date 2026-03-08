@@ -1,0 +1,188 @@
+import { LLMRankerService } from './llm-ranker';
+import { SearchResult } from './vector-store';
+import { SemanticSearchProfile } from '../../types';
+
+/**
+ * Integration tests for LLMRankerService
+ * These tests make actual API calls to Groq
+ * Run with: npm test -- llm-ranker.integration.test.ts
+ */
+describe('LLMRankerService Integration Tests', () => {
+  let service: LLMRankerService;
+
+  const mockProfile: SemanticSearchProfile = {
+    age: 30,
+    income: 250000,
+    gender: 'Female',
+    caste: 'SC',
+    state: 'Karnataka',
+  };
+
+  const mockScheme: SearchResult = {
+    id: 'scheme-1',
+    score: 0.88,
+    metadata: {
+      scheme_id: 'scheme-1',
+      name: 'Post Matric Scholarship for SC Students',
+      slug: 'post-matric-scholarship-sc',
+      ministry: 'Ministry of Social Justice and Empowerment',
+      category: 'education',
+      level: 'central',
+    },
+  };
+
+  beforeAll(() => {
+    // Verify API key is set
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY environment variable is required for integration tests');
+    }
+
+    service = new LLMRankerService();
+  });
+
+  describe('analyzeEligibility with real API', () => {
+    it('should successfully analyze eligibility for a scheme', async () => {
+      const result = await service.analyzeEligibility(mockProfile, mockScheme);
+
+      // Verify response structure
+      expect(result).toHaveProperty('eligible');
+      expect(result).toHaveProperty('confidence');
+      expect(result).toHaveProperty('reasoning');
+
+      // Verify types
+      expect(typeof result.eligible).toBe('boolean');
+      expect(typeof result.confidence).toBe('number');
+      expect(typeof result.reasoning).toBe('string');
+
+      // Verify confidence is in valid range
+      expect(result.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.confidence).toBeLessThanOrEqual(1);
+
+      // Verify reasoning is not empty
+      expect(result.reasoning.length).toBeGreaterThan(0);
+
+      console.log('Eligibility Analysis Result:', result);
+    }, 15000); // 15 second timeout for API call
+
+    it('should handle schemes with different eligibility criteria', async () => {
+      const womenScheme: SearchResult = {
+        id: 'scheme-2',
+        score: 0.75,
+        metadata: {
+          scheme_id: 'scheme-2',
+          name: 'Mahila Samman Savings Certificate',
+          slug: 'mahila-samman-savings',
+          ministry: 'Ministry of Finance',
+          category: 'financial_inclusion',
+          level: 'central',
+        },
+      };
+
+      const result = await service.analyzeEligibility(mockProfile, womenScheme);
+
+      expect(result).toHaveProperty('eligible');
+      expect(result).toHaveProperty('confidence');
+      expect(result).toHaveProperty('reasoning');
+
+      console.log('Women Scheme Analysis:', result);
+    }, 15000);
+  });
+
+  describe('batchAnalyze with real API', () => {
+    it('should analyze multiple schemes and return ranked results', async () => {
+      const schemes: SearchResult[] = [
+        {
+          id: 'scheme-1',
+          score: 0.9,
+          metadata: {
+            scheme_id: 'scheme-1',
+            name: 'Post Matric Scholarship for SC Students',
+            slug: 'post-matric-scholarship-sc',
+            ministry: 'Ministry of Social Justice and Empowerment',
+            category: 'education',
+            level: 'central',
+          },
+        },
+        {
+          id: 'scheme-2',
+          score: 0.85,
+          metadata: {
+            scheme_id: 'scheme-2',
+            name: 'Mahila Samman Savings Certificate',
+            slug: 'mahila-samman-savings',
+            ministry: 'Ministry of Finance',
+            category: 'financial_inclusion',
+            level: 'central',
+          },
+        },
+        {
+          id: 'scheme-3',
+          score: 0.8,
+          metadata: {
+            scheme_id: 'scheme-3',
+            name: 'Pradhan Mantri Kisan Samman Nidhi',
+            slug: 'pm-kisan',
+            ministry: 'Ministry of Agriculture',
+            category: 'agriculture',
+            level: 'central',
+          },
+        },
+      ];
+
+      const results = await service.batchAnalyze(mockProfile, schemes);
+
+      // Verify results structure
+      expect(Array.isArray(results)).toBe(true);
+
+      // Each result should have required fields
+      results.forEach((result) => {
+        expect(result).toHaveProperty('schemeId');
+        expect(result).toHaveProperty('name');
+        expect(result).toHaveProperty('slug');
+        expect(result).toHaveProperty('similarityScore');
+        expect(result).toHaveProperty('eligibility');
+        expect(result).toHaveProperty('metadata');
+
+        // Verify eligibility structure
+        expect(result.eligibility).toHaveProperty('eligible');
+        expect(result.eligibility).toHaveProperty('confidence');
+        expect(result.eligibility).toHaveProperty('reasoning');
+
+        // All returned schemes should be eligible
+        expect(result.eligibility.eligible).toBe(true);
+
+        // Confidence should be in valid range
+        expect(result.eligibility.confidence).toBeGreaterThanOrEqual(0);
+        expect(result.eligibility.confidence).toBeLessThanOrEqual(1);
+      });
+
+      // Results should be sorted by confidence (descending)
+      for (let i = 0; i < results.length - 1; i++) {
+        expect(results[i].eligibility.confidence).toBeGreaterThanOrEqual(
+          results[i + 1].eligibility.confidence
+        );
+      }
+
+      console.log('Batch Analysis Results:', JSON.stringify(results, null, 2));
+    }, 30000); // 30 second timeout for multiple API calls
+  });
+
+  describe('error handling with real API', () => {
+    it('should handle invalid API key gracefully', async () => {
+      // Temporarily override API key
+      const originalKey = process.env.GROQ_API_KEY;
+      process.env.GROQ_API_KEY = 'invalid-key';
+
+      const invalidService = new LLMRankerService();
+      const result = await invalidService.analyzeEligibility(mockProfile, mockScheme);
+
+      // Should return fallback analysis
+      expect(result.eligible).toBe(false);
+      expect(result.confidence).toBe(0.1);
+      expect(result.reasoning).toContain('service error');
+
+      // Restore original key
+      process.env.GROQ_API_KEY = originalKey;
+    }, 15000);
+  });
+});

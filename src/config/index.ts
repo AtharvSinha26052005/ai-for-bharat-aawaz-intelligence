@@ -32,6 +32,14 @@ export const config = {
     environment: process.env.PINECONE_ENVIRONMENT || '',
     indexName: process.env.PINECONE_INDEX_NAME || 'government-schemes',
   },
+  pineconeApiKey: process.env.PINECONE_API_KEY || '',
+
+  // Groq
+  groq: {
+    apiKey: process.env.GROQ_API_KEY || '',
+    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  },
+  groqApiKey: process.env.GROQ_API_KEY || '',
 
   // OpenAI
   openai: {

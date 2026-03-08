@@ -10,9 +10,8 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { apiService } from '../services/apiService';
-import { API_ENDPOINTS } from '../config/api';
-import { Language, UserProfile } from '../types';
+import { Language } from '../types';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface ProfileProps {
   language: Language;
@@ -21,9 +20,11 @@ interface ProfileProps {
 }
 
 export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet }) => {
+  const { t } = useTranslation(language);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [savedProfileId, setSavedProfileId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     age: '',
     incomeRange: '',
@@ -33,37 +34,62 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
     block: '',
     village: '',
     pincode: '',
+    phoneNumber: '',
+    aadharNumber: '',
+    gender: '',
+    caste: '',
     preferredLanguage: language,
     preferredMode: 'both' as 'voice' | 'text' | 'both',
   });
 
   useEffect(() => {
-    if (userId) {
-      loadProfile();
+    // Try to load profile from localStorage or userId
+    const storedProfileId = localStorage.getItem('profileId');
+    if (storedProfileId) {
+      setSavedProfileId(storedProfileId);
+      loadProfile(storedProfileId);
+    } else if (userId) {
+      loadProfile(userId);
     }
   }, [userId]);
 
-  const loadProfile = async () => {
+  const loadProfile = async (profileId: string) => {
     setLoading(true);
+    setError('');
     try {
-      const response: any = await apiService.get(API_ENDPOINTS.PROFILE_BY_ID(userId!));
-      if (response.success && response.data) {
-        const profile = response.data;
+      // Call the new profile storage API
+      const response = await fetch(`http://localhost:3000/api/v1/profiles/${profileId}`);
+      
+      if (!response.ok) {
+        throw new Error('Profile not found');
+      }
+
+      const result = await response.json();
+      
+      if (result.data) {
+        const profile = result.data;
         setFormData({
-          age: profile.age.toString(),
-          incomeRange: profile.incomeRange,
-          occupation: profile.occupation,
-          state: profile.location.state,
-          district: profile.location.district,
-          block: profile.location.block || '',
-          village: profile.location.village || '',
-          pincode: profile.location.pincode || '',
-          preferredLanguage: profile.preferredLanguage,
-          preferredMode: profile.preferredMode,
+          age: profile.age?.toString() || '',
+          incomeRange: profile.income_range || '',
+          occupation: profile.occupation || '',
+          state: profile.state || '',
+          district: profile.district || '',
+          block: profile.block || '',
+          village: profile.village || '',
+          pincode: profile.pincode || '',
+          phoneNumber: profile.phone_number || '',
+          aadharNumber: profile.aadhar_number || '',
+          gender: profile.gender || '',
+          caste: profile.caste || '',
+          preferredLanguage: language,
+          preferredMode: profile.preferred_mode || 'both',
         });
+        setSavedProfileId(profileId);
+        onUserIdSet(profileId);
       }
     } catch (err: any) {
-      setError('Failed to load profile');
+      console.error('Failed to load profile:', err);
+      setError('Could not load previous profile. You can create a new one.');
     } finally {
       setLoading(false);
     }
@@ -76,77 +102,99 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
     });
   };
 
+  const validateForm = (): string | null => {
+    // Validate phone number (10 digits)
+    if (formData.phoneNumber && !/^\d{10}$/.test(formData.phoneNumber)) {
+      return 'Phone number must be exactly 10 digits';
+    }
+
+    // Validate aadhar number (12 digits)
+    if (formData.aadharNumber && !/^\d{12}$/.test(formData.aadharNumber)) {
+      return 'Aadhar number must be exactly 12 digits';
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
 
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      setLoading(false);
+      return;
+    }
+
     try {
       const profileData = {
         age: parseInt(formData.age),
-        incomeRange: formData.incomeRange,
+        income_range: formData.incomeRange,
+        phone_number: formData.phoneNumber || '',
+        aadhar_number: formData.aadharNumber || '',
+        gender: formData.gender || '',
+        caste: formData.caste || '',
         occupation: formData.occupation,
-        familyComposition: {
-          adults: 2,
-          children: 0,
-          seniors: 0,
-        },
-        location: {
-          state: formData.state,
-          district: formData.district,
-          block: formData.block || undefined,
-          village: formData.village || undefined,
-          pincode: formData.pincode || undefined,
-        },
-        primaryNeeds: ['schemes'],
-        preferredLanguage: formData.preferredLanguage,
-        preferredMode: formData.preferredMode,
-        consentGiven: true,
+        state: formData.state,
+        district: formData.district,
+        block: formData.block || '',
+        village: formData.village || '',
+        pincode: formData.pincode || '',
+        preferred_mode: formData.preferredMode,
       };
 
       console.log('Submitting profile data:', profileData);
 
-      const response: any = await apiService.post(API_ENDPOINTS.PROFILE, profileData);
-      
-      console.log('Profile response:', response);
+      // Always create a new profile (backend doesn't support updates yet)
+      // In the future, we can add PUT /api/v1/profiles/:id for updates
+      const response = await fetch('http://localhost:3000/api/v1/profiles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileData),
+      });
 
-      if (response.success && response.data) {
-        setSuccess('Profile saved successfully!');
-        if (response.data.userId) {
-          onUserIdSet(response.data.userId);
-        }
+      const result = await response.json();
+      
+      console.log('Profile response:', result);
+
+      if (response.ok && result.data) {
+        const profileId = result.data.profile_id;
+        setSavedProfileId(profileId);
+        setSuccess(savedProfileId ? 'Profile updated successfully!' : `Profile saved successfully!`);
+        onUserIdSet(profileId);
+        
+        // Store profile ID in localStorage for later use
+        localStorage.setItem('profileId', profileId);
+        
+        // Auto-redirect to schemes page after 1 second
+        setTimeout(() => {
+          window.location.href = `/schemes?profileId=${profileId}`;
+        }, 1000);
+      } else {
+        throw new Error(result.error || 'Failed to save profile');
       }
     } catch (err: any) {
       console.error('Profile submission error:', err);
-      
-      // Extract detailed error message
-      let errorMessage = 'Failed to save profile';
-      
-      if (err.error?.message) {
-        errorMessage = err.error.message;
-      } else if (err.message) {
-        errorMessage = err.message;
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      }
-      
-      // If there are validation details, show them
-      if (err.error?.details) {
-        errorMessage += ': ' + JSON.stringify(err.error.details);
-      }
-      
-      setError(errorMessage);
+      setError(err.message || 'Failed to save profile');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading && userId) {
+  if (loading) {
     return (
       <Container maxWidth="md">
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', mt: 8 }}>
           <CircularProgress />
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            {t.common.loading}
+          </Typography>
         </Box>
       </Container>
     );
@@ -156,11 +204,17 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
     <Container maxWidth="md">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <Typography variant="h4" gutterBottom>
-          {userId ? 'Update Profile' : 'Create Profile'}
+          {savedProfileId ? t.profile.updateTitle : t.profile.createTitle}
         </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
-          Tell us about yourself to get personalized scheme recommendations
+          {t.profile.subtitle}
         </Typography>
+
+        {savedProfileId && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t.profile.profileUpdated}
+          </Alert>
+        )}
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
@@ -171,7 +225,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
               <TextField
                 required
                 fullWidth
-                label="Age"
+                label={t.profile.age}
                 name="age"
                 type="number"
                 value={formData.age}
@@ -183,15 +237,67 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
                 required
                 fullWidth
                 select
-                label="Income Range"
+                label={t.profile.incomeRange}
                 name="incomeRange"
                 value={formData.incomeRange}
                 onChange={handleChange}
               >
-                <MenuItem value="below-1L">Below ₹1 Lakh</MenuItem>
-                <MenuItem value="1L-3L">₹1-3 Lakhs</MenuItem>
-                <MenuItem value="3L-5L">₹3-5 Lakhs</MenuItem>
-                <MenuItem value="above-5L">Above ₹5 Lakhs</MenuItem>
+                <MenuItem value="below-1L">{t.profile.below1lakh}</MenuItem>
+                <MenuItem value="1L-3L">{t.profile['1to3lakh']}</MenuItem>
+                <MenuItem value="3L-5L">{t.profile['3to5lakh']}</MenuItem>
+                <MenuItem value="above-5L">{t.profile['5to10lakh']}</MenuItem>
+              </TextField>
+
+              <TextField
+                fullWidth
+                label="Phone Number"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="10 digit mobile number"
+                inputProps={{ maxLength: 10 }}
+                helperText="Enter 10 digit mobile number"
+              />
+
+              <TextField
+                fullWidth
+                label="Aadhar Number"
+                name="aadharNumber"
+                value={formData.aadharNumber}
+                onChange={handleChange}
+                placeholder="12 digit Aadhar number"
+                inputProps={{ maxLength: 12 }}
+                helperText="Enter 12 digit Aadhar number"
+              />
+
+              <TextField
+                fullWidth
+                select
+                label="Gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+              >
+                <MenuItem value="">Select Gender</MenuItem>
+                <MenuItem value="Male">Male</MenuItem>
+                <MenuItem value="Female">Female</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </TextField>
+
+              <TextField
+                fullWidth
+                select
+                label="Caste"
+                name="caste"
+                value={formData.caste}
+                onChange={handleChange}
+              >
+                <MenuItem value="">Select Caste</MenuItem>
+                <MenuItem value="General">General</MenuItem>
+                <MenuItem value="OBC">OBC</MenuItem>
+                <MenuItem value="SC">SC</MenuItem>
+                <MenuItem value="ST">ST</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
               </TextField>
             </Box>
 
@@ -271,7 +377,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
               fullWidth
               disabled={loading}
             >
-              {loading ? 'Saving...' : userId ? 'Update Profile' : 'Create Profile'}
+              {loading ? 'Saving...' : savedProfileId ? 'Update & Find Schemes' : 'Save & Find Schemes'}
             </Button>
           </Box>
         </form>
