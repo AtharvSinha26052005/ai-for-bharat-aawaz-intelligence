@@ -4,7 +4,7 @@ import { CssBaseline, Box } from '@mui/material';
 import { Home } from './pages/Home';
 import { Profile } from './pages/Profile';
 import { Schemes } from './pages/Schemes';
-import { Applications } from './pages/Applications';
+// import { Applications } from './pages/Applications';
 import FraudCheck from './pages/FraudCheck';
 import { Education } from './pages/Education';
 import { Navigation } from './components/Navigation';
@@ -36,7 +36,7 @@ function App() {
               <Route path="/" element={<Home language={language} userId={userId} onUserIdSet={handleUserIdSet} />} />
               <Route path="/profile" element={<Profile language={language} userId={userId} onUserIdSet={handleUserIdSet} />} />
               <Route path="/schemes" element={<Schemes language={language} userId={userId} />} />
-              <Route path="/applications" element={<Applications language={language} userId={userId} />} />
+              {/* <Route path="/applications" element={<Applications language={language} userId={userId} />} /> */}
               <Route path="/fraud-check" element={<FraudCheck language={language} userId={userId} />} />
               <Route path="/education" element={<Education language={language} userId={userId} />} />
               <Route path="*" element={<Navigate to="/" replace />} />

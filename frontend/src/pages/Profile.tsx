@@ -105,12 +105,12 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
   const validateForm = (): string | null => {
     // Validate phone number (10 digits)
     if (formData.phoneNumber && !/^\d{10}$/.test(formData.phoneNumber)) {
-      return 'Phone number must be exactly 10 digits';
+      return t.profile.phoneValidation;
     }
 
     // Validate aadhar number (12 digits)
     if (formData.aadharNumber && !/^\d{12}$/.test(formData.aadharNumber)) {
-      return 'Aadhar number must be exactly 12 digits';
+      return t.profile.aadharValidation;
     }
 
     return null;
@@ -250,72 +250,72 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
 
               <TextField
                 fullWidth
-                label="Phone Number"
+                label={t.profile.phoneNumber}
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleChange}
-                placeholder="10 digit mobile number"
+                placeholder={t.profile.phoneNumberPlaceholder}
                 inputProps={{ maxLength: 10 }}
-                helperText="Enter 10 digit mobile number"
+                helperText={t.profile.phoneHelperText}
               />
 
               <TextField
                 fullWidth
-                label="Aadhar Number"
+                label={t.profile.aadharNumber}
                 name="aadharNumber"
                 value={formData.aadharNumber}
                 onChange={handleChange}
-                placeholder="12 digit Aadhar number"
+                placeholder={t.profile.aadharPlaceholder}
                 inputProps={{ maxLength: 12 }}
-                helperText="Enter 12 digit Aadhar number"
+                helperText={t.profile.aadharHelperText}
               />
 
               <TextField
                 fullWidth
                 select
-                label="Gender"
+                label={t.profile.gender}
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
               >
-                <MenuItem value="">Select Gender</MenuItem>
-                <MenuItem value="Male">Male</MenuItem>
-                <MenuItem value="Female">Female</MenuItem>
-                <MenuItem value="Other">Other</MenuItem>
+                <MenuItem value="">{t.profile.selectGender}</MenuItem>
+                <MenuItem value="Male">{t.profile.male}</MenuItem>
+                <MenuItem value="Female">{t.profile.female}</MenuItem>
+                <MenuItem value="Other">{t.profile.other}</MenuItem>
               </TextField>
 
               <TextField
                 fullWidth
                 select
-                label="Caste"
+                label={t.profile.caste}
                 name="caste"
                 value={formData.caste}
                 onChange={handleChange}
               >
-                <MenuItem value="">Select Caste</MenuItem>
-                <MenuItem value="General">General</MenuItem>
-                <MenuItem value="OBC">OBC</MenuItem>
-                <MenuItem value="SC">SC</MenuItem>
-                <MenuItem value="ST">ST</MenuItem>
-                <MenuItem value="Other">Other</MenuItem>
+                <MenuItem value="">{t.profile.selectCaste}</MenuItem>
+                <MenuItem value="General">{t.profile.general}</MenuItem>
+                <MenuItem value="OBC">{t.profile.obc}</MenuItem>
+                <MenuItem value="SC">{t.profile.sc}</MenuItem>
+                <MenuItem value="ST">{t.profile.st}</MenuItem>
+                <MenuItem value="Other">{t.profile.other}</MenuItem>
               </TextField>
             </Box>
 
             <TextField
               required
               fullWidth
-              label="Occupation"
+              label={t.profile.occupation}
               name="occupation"
               value={formData.occupation}
               onChange={handleChange}
-              placeholder="e.g., Farmer, Laborer, Self-employed"
+              placeholder={t.profile.occupationPlaceholder}
             />
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 3 }}>
               <TextField
                 required
                 fullWidth
-                label="State"
+                label={t.profile.state}
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
@@ -324,7 +324,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
               <TextField
                 required
                 fullWidth
-                label="District"
+                label={t.profile.district}
                 name="district"
                 value={formData.district}
                 onChange={handleChange}
@@ -332,7 +332,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
 
               <TextField
                 fullWidth
-                label="Block (Optional)"
+                label={t.profile.blockOptional}
                 name="block"
                 value={formData.block}
                 onChange={handleChange}
@@ -340,7 +340,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
 
               <TextField
                 fullWidth
-                label="Village (Optional)"
+                label={t.profile.villageOptional}
                 name="village"
                 value={formData.village}
                 onChange={handleChange}
@@ -348,7 +348,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
 
               <TextField
                 fullWidth
-                label="Pincode (Optional)"
+                label={t.profile.pincodeOptional}
                 name="pincode"
                 value={formData.pincode}
                 onChange={handleChange}
@@ -359,14 +359,14 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
                 required
                 fullWidth
                 select
-                label="Preferred Mode"
+                label={t.profile.preferredMode}
                 name="preferredMode"
                 value={formData.preferredMode}
                 onChange={handleChange}
               >
-                <MenuItem value="voice">Voice</MenuItem>
-                <MenuItem value="text">Text</MenuItem>
-                <MenuItem value="both">Both</MenuItem>
+                <MenuItem value="voice">{t.profile.voice}</MenuItem>
+                <MenuItem value="text">{t.profile.text}</MenuItem>
+                <MenuItem value="both">{t.profile.both}</MenuItem>
               </TextField>
             </Box>
 
@@ -377,7 +377,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, userId, onUserIdSet 
               fullWidth
               disabled={loading}
             >
-              {loading ? 'Saving...' : savedProfileId ? 'Update & Find Schemes' : 'Save & Find Schemes'}
+              {loading ? t.profile.saving : savedProfileId ? t.profile.updateAndFindSchemes : t.profile.saveAndFindSchemes}
             </Button>
           </Box>
         </form>

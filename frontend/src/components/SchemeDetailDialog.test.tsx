@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { SchemeDetailDialog } from './SchemeDetailDialog';
 import { SchemeRecommendation } from '../types';
@@ -152,6 +152,43 @@ describe('SchemeDetailDialog', () => {
       );
 
       expect(screen.getByText('Central')).toBeInTheDocument();
+    });
+
+    it('should display all required scheme information (Task 6.2)', () => {
+      renderWithTheme(
+        <SchemeDetailDialog
+          open={true}
+          scheme={mockScheme}
+          onClose={mockOnClose}
+          onApply={mockOnApply}
+        />
+      );
+
+      // Verify name (Requirement 2.2) ✓
+      expect(screen.getByText('Pradhan Mantri Kisan Samman Nidhi')).toBeInTheDocument();
+      
+      // Verify description (Requirement 2.2) ✓
+      expect(screen.getByText('Financial support to farmers with cultivable land')).toBeInTheDocument();
+      
+      // Verify category (Requirement 2.2) ✓
+      expect(screen.getByText('Agriculture')).toBeInTheDocument();
+      
+      // Verify level (Requirement 2.2) ✓
+      expect(screen.getByText('Central')).toBeInTheDocument();
+      
+      // Note: Ministry is not displayed in the dialog because the GovernmentScheme interface
+      // doesn't include a ministry field. Ministry IS displayed on the scheme card in
+      // PersonalizedResultsDisplay. This is a design limitation of the reused component.
+      
+      // Verify eligibility explanation (Requirement 2.3) ✓
+      expect(screen.getByText('You are eligible because you own cultivable land and meet the income criteria.')).toBeInTheDocument();
+      
+      // Verify "Apply Now" button (Requirement 2.4) ✓
+      expect(screen.getByRole('button', { name: /apply now/i })).toBeInTheDocument();
+      
+      // Verify "Close" button (Requirement 2.4) ✓
+      const closeButtons = screen.getAllByRole('button', { name: /close dialog/i });
+      expect(closeButtons.length).toBeGreaterThan(0);
     });
   });
 
@@ -549,6 +586,154 @@ describe('SchemeDetailDialog', () => {
       );
 
       expect(screen.getByText('30% Match')).toBeInTheDocument();
+    });
+  });
+
+  describe('Requirements 2.5, 2.6, 8.7: Interest Dialog Focus Management', () => {
+    beforeEach(() => {
+      // Mock localStorage for profileId
+      Storage.prototype.getItem = jest.fn((key) => {
+        if (key === 'profileId') return 'test-profile-123';
+        return null;
+      });
+    });
+
+    it('should open Interest Dialog when Apply Now is clicked with valid profileId', async () => {
+      const mockOnMarkInterested = jest.fn();
+      
+      renderWithTheme(
+        <SchemeDetailDialog
+          open={true}
+          scheme={mockScheme}
+          onClose={mockOnClose}
+          onApply={mockOnApply}
+          onMarkInterested={mockOnMarkInterested}
+          profileId="test-profile-123"
+        />
+      );
+
+      const applyButton = screen.getByRole('button', { name: /apply now/i });
+      fireEvent.click(applyButton);
+
+      // Interest Dialog should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Are you interested in this scheme?')).toBeInTheDocument();
+      });
+    });
+
+    it('should have proper ARIA attributes on Interest Dialog', async () => {
+      const mockOnMarkInterested = jest.fn();
+      
+      renderWithTheme(
+        <SchemeDetailDialog
+          open={true}
+          scheme={mockScheme}
+          onClose={mockOnClose}
+          onApply={mockOnApply}
+          onMarkInterested={mockOnMarkInterested}
+          profileId="test-profile-123"
+        />
+      );
+
+      const applyButton = screen.getByRole('button', { name: /apply now/i });
+      fireEvent.click(applyButton);
+
+      // Wait for Interest Dialog to appear
+      await waitFor(() => {
+        expect(screen.getByText('Are you interested in this scheme?')).toBeInTheDocument();
+      });
+
+      // Check for Interest Dialog ARIA attributes
+      const dialogs = screen.getAllByRole('dialog');
+      // The Interest Dialog should have the aria-labelledby attribute
+      const interestDialogTitle = screen.getByText('Are you interested in this scheme?');
+      expect(interestDialogTitle).toHaveAttribute('id', 'interest-dialog-title');
+    });
+
+    it('should close Interest Dialog when "No, Thanks" is clicked', async () => {
+      const mockOnMarkInterested = jest.fn();
+      
+      renderWithTheme(
+        <SchemeDetailDialog
+          open={true}
+          scheme={mockScheme}
+          onClose={mockOnClose}
+          onApply={mockOnApply}
+          onMarkInterested={mockOnMarkInterested}
+          profileId="test-profile-123"
+        />
+      );
+
+      const applyButton = screen.getByRole('button', { name: /apply now/i });
+      fireEvent.click(applyButton);
+
+      // Wait for Interest Dialog to appear
+      await waitFor(() => {
+        expect(screen.getByText('Are you interested in this scheme?')).toBeInTheDocument();
+      });
+
+      const noButton = screen.getByRole('button', { name: /no, thanks/i });
+      fireEvent.click(noButton);
+
+      // Interest Dialog should be closed
+      await waitFor(() => {
+        expect(screen.queryByText('Are you interested in this scheme?')).not.toBeInTheDocument();
+      });
+      expect(mockOnMarkInterested).not.toHaveBeenCalled();
+    });
+
+    it('should call onMarkInterested when "Yes, I\'m Interested" is clicked', async () => {
+      const mockOnMarkInterested = jest.fn().mockResolvedValue(undefined);
+      
+      renderWithTheme(
+        <SchemeDetailDialog
+          open={true}
+          scheme={mockScheme}
+          onClose={mockOnClose}
+          onApply={mockOnApply}
+          onMarkInterested={mockOnMarkInterested}
+          profileId="test-profile-123"
+        />
+      );
+
+      const applyButton = screen.getByRole('button', { name: /apply now/i });
+      fireEvent.click(applyButton);
+
+      // Wait for Interest Dialog to appear
+      await waitFor(() => {
+        expect(screen.getByText('Are you interested in this scheme?')).toBeInTheDocument();
+      });
+
+      const yesButton = screen.getByRole('button', { name: /yes, i'm interested/i });
+      fireEvent.click(yesButton);
+
+      // onMarkInterested should be called with the scheme
+      await waitFor(() => {
+        expect(mockOnMarkInterested).toHaveBeenCalledWith(mockScheme);
+      });
+    });
+
+    it('should not open Interest Dialog when profileId is missing', () => {
+      // Override localStorage to return null
+      Storage.prototype.getItem = jest.fn(() => null);
+      
+      renderWithTheme(
+        <SchemeDetailDialog
+          open={true}
+          scheme={mockScheme}
+          onClose={mockOnClose}
+          onApply={mockOnApply}
+          onMarkInterested={jest.fn()}
+          profileId={null}
+        />
+      );
+
+      const applyButton = screen.getByRole('button', { name: /apply now/i });
+      fireEvent.click(applyButton);
+
+      // Interest Dialog should NOT be visible
+      expect(screen.queryByText('Are you interested in this scheme?')).not.toBeInTheDocument();
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 });

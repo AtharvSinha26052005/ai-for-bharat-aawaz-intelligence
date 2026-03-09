@@ -151,7 +151,7 @@ export const Schemes: React.FC<SchemesProps> = ({ language, userId }) => {
       console.log(`Loaded ${loadedSchemes.length} schemes`);
       
       if (loadedSchemes.length === 0) {
-        setError('No schemes data available. Please check if myscheme_full_1000.json exists in the public folder.');
+        setError(t.schemes.noDataAvailable);
         return;
       }
       
@@ -160,7 +160,7 @@ export const Schemes: React.FC<SchemesProps> = ({ language, userId }) => {
     } catch (err: any) {
       console.error('Error loading schemes:', err);
       const sanitizedMessage = sanitizeErrorMessage(err);
-      setError(`Failed to load schemes: ${sanitizedMessage}`);
+      setError(`${t.schemes.failedToLoad}: ${sanitizedMessage}`);
     } finally {
       setLoading(false);
     }
@@ -235,7 +235,7 @@ export const Schemes: React.FC<SchemesProps> = ({ language, userId }) => {
       if (response.ok) {
         console.log('Scheme marked as interested successfully');
         // Show success message (optional)
-        alert('Scheme saved! Visit the Learn Finance page to get financial advice.');
+        alert(t.schemes.schemeSaved);
       } else {
         console.error('Failed to mark scheme as interested');
       }
@@ -329,7 +329,7 @@ export const Schemes: React.FC<SchemesProps> = ({ language, userId }) => {
           overflow: 'hidden',
         }}
       >
-        {!loading && `${filteredSchemes.length} scheme${filteredSchemes.length !== 1 ? 's' : ''} found`}
+        {!loading && `${filteredSchemes.length} ${filteredSchemes.length !== 1 ? t.schemes.schemesFoundPlural : t.schemes.schemesFoundSingular}`}
       </Box>
 
       {/* Filter Panel */}

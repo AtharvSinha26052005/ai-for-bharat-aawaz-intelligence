@@ -42,7 +42,7 @@ export const Navigation: React.FC<NavigationProps> = ({ language, onLanguageChan
     { text: t.nav.home, icon: <HomeIcon />, path: '/' },
     { text: t.nav.profile, icon: <PersonIcon />, path: '/profile' },
     { text: t.nav.schemes, icon: <AccountBalanceIcon />, path: '/schemes' },
-    { text: t.nav.applications, icon: <AssignmentIcon />, path: '/applications' },
+    // { text: t.nav.applications, icon: <AssignmentIcon />, path: '/applications' },
     { text: t.nav.fraudCheck, icon: <SecurityIcon />, path: '/fraud-check' },
     { text: t.nav.learnFinance, icon: <SchoolIcon />, path: '/education' },
   ];

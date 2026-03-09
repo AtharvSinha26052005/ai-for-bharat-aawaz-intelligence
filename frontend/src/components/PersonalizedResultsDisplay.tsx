@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -13,6 +13,9 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { transformForAPI, transformToSchemeRecommendation } from '../utils/schemeTransformers';
+import { SchemeRecommendation } from '../types';
+import { SchemeDetailDialog } from './SchemeDetailDialog';
 
 export interface PersonalizedScheme {
   schemeId?: string;
@@ -68,6 +71,99 @@ export interface PersonalizedResultsDisplayProps {
 export const PersonalizedResultsDisplay: React.FC<PersonalizedResultsDisplayProps> = ({
   recommendations,
 }) => {
+  // Dialog state management
+  const [selectedScheme, setSelectedScheme] = useState<PersonalizedScheme | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  /**
+   * Handles the "View Details" button click
+   * Opens the scheme detail dialog with the selected scheme
+   * 
+   * @param scheme - The PersonalizedScheme to display details for
+   */
+  const handleViewDetails = (scheme: PersonalizedScheme): void => {
+    setSelectedScheme(scheme);
+    setDialogOpen(true);
+  };
+
+  /**
+   * Handles closing the scheme detail dialog
+   * Closes the dialog and clears the selected scheme state
+   * 
+   * Requirements: 2.6
+   */
+  const handleCloseDialog = (): void => {
+    setDialogOpen(false);
+    setSelectedScheme(null);
+  };
+
+  /**
+   * Handles marking a scheme as interested
+   * 
+   * This function is called when the user confirms interest in a scheme
+   * by clicking "Yes" in the Interest Dialog. It:
+   * 1. Retrieves the profile ID from localStorage
+   * 2. Transforms the scheme data to API format using transformForAPI
+   * 3. Sends a POST request to /api/v1/interested-schemes
+   * 4. Handles success/error responses
+   * 5. Closes the dialog after completion
+   * 
+   * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 6.2, 6.3
+   * 
+   * @param scheme - The SchemeRecommendation object (transformed from PersonalizedScheme)
+   */
+  const handleMarkInterested = async (scheme: SchemeRecommendation): Promise<void> => {
+    try {
+      // Requirement 6.2: Check localStorage for profile_id
+      const profileId = localStorage.getItem('profileId');
+      
+      // Requirement 6.3: Handle missing profile_id
+      if (!profileId) {
+        console.error('No profile ID found');
+        handleCloseDialog();
+        return;
+      }
+
+      // Find the original PersonalizedScheme from selectedScheme
+      // Since we're working with the transformed SchemeRecommendation,
+      // we need to use the selectedScheme state which has the original data
+      if (!selectedScheme) {
+        console.error('No selected scheme found');
+        handleCloseDialog();
+        return;
+      }
+
+      // Requirement 4.2: Transform scheme data using transformForAPI
+      const apiPayload = transformForAPI(selectedScheme, profileId);
+
+      // Requirement 4.1: Send POST request to /api/v1/interested-schemes
+      const response = await fetch('http://localhost:3000/api/v1/interested-schemes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiPayload),
+      });
+
+      // Requirement 4.3: Handle success response
+      if (response.ok) {
+        console.log('Scheme marked as interested successfully');
+        // Optional: Show success message to user
+        // alert('Scheme saved successfully!');
+      } else {
+        // Requirement 4.4: Handle error response with logging
+        console.error('Failed to mark scheme as interested');
+      }
+    } catch (error) {
+      // Requirement 4.4: Handle error response with logging
+      console.error('Error marking scheme as interested:', error);
+    } finally {
+      // Requirement 4.5: Close dialog after operation completes
+      handleCloseDialog();
+    }
+  };
+
+
   if (recommendations.length === 0) {
     return (
       <Alert severity="info" sx={{ mt: 2 }}>
@@ -227,12 +323,19 @@ export const PersonalizedResultsDisplay: React.FC<PersonalizedResultsDisplayProp
                 )}
               </CardContent>
 
-              <CardActions sx={{ p: 2, pt: 0 }}>
-                {scheme.apply_link ? (
+              <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+                <Button
+                  size="small"
+                  onClick={() => handleViewDetails(scheme)}
+                  aria-label={`View details for ${scheme.name}`}
+                >
+                  View Details
+                </Button>
+                {scheme.apply_link && (
                   <Button
+                    size="small"
                     variant="contained"
                     color="primary"
-                    fullWidth
                     endIcon={<OpenInNewIcon />}
                     href={scheme.apply_link}
                     target="_blank"
@@ -241,22 +344,26 @@ export const PersonalizedResultsDisplay: React.FC<PersonalizedResultsDisplayProp
                   >
                     Apply Now
                   </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    endIcon={<OpenInNewIcon />}
-                    href={`/schemes/${scheme.slug}`}
-                    aria-label={`View details for ${scheme.name}`}
-                  >
-                    View Details
-                  </Button>
                 )}
               </CardActions>
             </Card>
         ))}
       </Box>
+
+      {/* Scheme Detail Dialog */}
+      {selectedScheme && (
+        <SchemeDetailDialog
+          open={dialogOpen}
+          scheme={transformToSchemeRecommendation(selectedScheme)}
+          onClose={handleCloseDialog}
+          onApply={(schemeId: string) => {
+            // Apply action is handled by the dialog's internal interest flow
+            console.log('Apply clicked for scheme:', schemeId);
+          }}
+          onMarkInterested={handleMarkInterested}
+          profileId={localStorage.getItem('profileId')}
+        />
+      )}
     </Box>
   );
 };

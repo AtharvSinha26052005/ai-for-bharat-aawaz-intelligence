@@ -15,6 +15,7 @@ import {
 import { CheckCircle, HourglassEmpty, Cancel, Info } from '@mui/icons-material';
 import { apiService } from '../services/apiService';
 import { Language } from '../types';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface ApplicationsProps {
   language: Language;
@@ -36,6 +37,7 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation(language);
 
   useEffect(() => {
     if (userId) {
@@ -106,11 +108,26 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return t.applications.statusApproved;
+      case 'rejected':
+        return t.applications.statusRejected;
+      case 'in_progress':
+        return t.applications.statusInProgress;
+      case 'pending':
+        return t.applications.statusPending;
+      default:
+        return status.toUpperCase();
+    }
+  };
+
   if (!userId) {
     return (
       <Container maxWidth="md">
         <Alert severity="warning" sx={{ mt: 2 }}>
-          Please create or load your profile first to view applications.
+          {t.applications.profileRequired}
         </Alert>
       </Container>
     );
@@ -120,10 +137,10 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
     <Container maxWidth="lg">
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom>
-          My Applications
+          {t.applications.title}
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Track the status of your scheme applications
+          {t.applications.subtitle}
         </Typography>
       </Box>
 
@@ -142,13 +159,13 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
       {!loading && applications.length === 0 && (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary">
-            No applications found
+            {t.applications.noApplicationsFound}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Start by checking your eligible schemes
+            {t.applications.checkEligibleSchemes}
           </Typography>
           <Button variant="contained" href="/schemes" sx={{ mt: 2 }}>
-            View Schemes
+            {t.applications.viewSchemes}
           </Button>
         </Paper>
       )}
@@ -163,7 +180,7 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
                     {app.schemeName}
                   </Typography>
                   <Chip
-                    label={app.status.replace('_', ' ').toUpperCase()}
+                    label={getStatusLabel(app.status)}
                     color={getStatusColor(app.status) as any}
                     size="small"
                   />
@@ -171,7 +188,7 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
 
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Progress: {app.progress}%
+                    {t.applications.progress}: {app.progress}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
@@ -183,7 +200,7 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2, mb: 2 }}>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
-                      Submitted
+                      {t.applications.submitted}
                     </Typography>
                     <Typography variant="body2">
                       {new Date(app.submittedAt).toLocaleDateString()}
@@ -191,7 +208,7 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
                   </Box>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
-                      Last Updated
+                      {t.applications.lastUpdated}
                     </Typography>
                     <Typography variant="body2">
                       {new Date(app.lastUpdated).toLocaleDateString()}
@@ -202,7 +219,7 @@ export const Applications: React.FC<ApplicationsProps> = ({ language, userId }) 
                 {app.nextSteps && app.nextSteps.length > 0 && (
                   <Box>
                     <Typography variant="subtitle2" gutterBottom>
-                      Next Steps:
+                      {t.applications.nextSteps}
                     </Typography>
                     <Box component="ul" sx={{ mt: 1, pl: 2 }}>
                       {app.nextSteps.map((step, index) => (

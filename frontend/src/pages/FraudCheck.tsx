@@ -21,7 +21,7 @@ interface FraudCheckProps {
   userId: string | null;
 }
 
-const GEMINI_API_KEY = 'AIzaSyBkbQC4Ce1QthAWjqfPQtR828NkeRC77iE';
+const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 
 const FraudCheck: React.FC<FraudCheckProps> = ({ language, userId }) => {
   const { t } = useTranslation(language);
@@ -33,7 +33,12 @@ const FraudCheck: React.FC<FraudCheckProps> = ({ language, userId }) => {
 
   const handleCheck = async () => {
     if (!message.trim()) {
-      setError('Please enter a message to check');
+      setError(t.fraudCheck.emptyMessageError);
+      return;
+    }
+
+    if (!GEMINI_API_KEY) {
+      setError('API key not configured. Please contact the administrator.');
       return;
     }
 

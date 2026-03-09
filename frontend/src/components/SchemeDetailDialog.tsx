@@ -74,6 +74,8 @@ export const SchemeDetailDialog: React.FC<SchemeDetailDialogProps> = ({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const interestDialogRef = useRef<HTMLDivElement>(null);
+  const interestDialogTriggerRef = useRef<HTMLElement | null>(null);
   const [showInterestDialog, setShowInterestDialog] = React.useState(false);
   const [markingInterested, setMarkingInterested] = React.useState(false);
 
@@ -121,6 +123,51 @@ export const SchemeDetailDialog: React.FC<SchemeDetailDialogProps> = ({
       }
     }
   }, []);
+
+  // Focus trap for Interest Dialog (Requirements 2.5, 8.7)
+  const handleInterestDialogKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key !== 'Tab' || !interestDialogRef.current) {
+      return;
+    }
+
+    const focusableElements = interestDialogRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey) {
+      // Shift + Tab: If focus is on first element, move to last
+      if (document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement?.focus();
+      }
+    } else {
+      // Tab: If focus is on last element, move to first
+      if (document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement?.focus();
+      }
+    }
+  }, []);
+
+  // Store the element that triggered the Interest Dialog for focus return (Requirement 2.6)
+  useEffect(() => {
+    if (showInterestDialog) {
+      interestDialogTriggerRef.current = document.activeElement as HTMLElement;
+    }
+  }, [showInterestDialog]);
+
+  // Return focus to the trigger element when Interest Dialog closes (Requirement 2.6)
+  useEffect(() => {
+    if (!showInterestDialog && interestDialogTriggerRef.current) {
+      // Small delay to ensure dialog is fully closed before returning focus
+      setTimeout(() => {
+        interestDialogTriggerRef.current?.focus();
+        interestDialogTriggerRef.current = null;
+      }, 100);
+    }
+  }, [showInterestDialog]);
 
   if (!scheme) {
     return null;
@@ -256,7 +303,7 @@ export const SchemeDetailDialog: React.FC<SchemeDetailDialogProps> = ({
             Eligibility
           </Typography>
           
-          {scheme.eligibility.eligible && (
+          {/* {scheme.eligibility.eligible && (
             <Box
               sx={{
                 display: 'flex',
@@ -288,7 +335,7 @@ export const SchemeDetailDialog: React.FC<SchemeDetailDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          )}
+          )} */}
 
           <Typography variant="body1" color="text.secondary">
             {scheme.eligibility.explanation}
@@ -397,8 +444,10 @@ export const SchemeDetailDialog: React.FC<SchemeDetailDialogProps> = ({
 
       {/* Interest Confirmation Dialog */}
       <Dialog
+        ref={interestDialogRef}
         open={showInterestDialog}
         onClose={() => handleMarkInterested(false)}
+        onKeyDown={handleInterestDialogKeyDown}
         aria-labelledby="interest-dialog-title"
       >
         <DialogTitle id="interest-dialog-title">

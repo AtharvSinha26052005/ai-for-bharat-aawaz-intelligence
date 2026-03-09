@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -49,6 +50,8 @@ interface FinancialAdvice {
 
 export const Education: React.FC<EducationProps> = ({ language, userId }) => {
   const { t } = useTranslation(language);
+  const location = useLocation();
+  
   // Interested schemes state
   const [interestedSchemes, setInterestedSchemes] = useState<InterestedScheme[]>([]);
   const [loadingSchemes, setLoadingSchemes] = useState(false);
@@ -62,7 +65,7 @@ export const Education: React.FC<EducationProps> = ({ language, userId }) => {
 
   useEffect(() => {
     loadInterestedSchemes();
-  }, [userId]);
+  }, [userId, location.pathname]);
 
   const loadInterestedSchemes = async () => {
     const profileId = localStorage.getItem('profileId') || userId;
@@ -281,7 +284,7 @@ export const Education: React.FC<EducationProps> = ({ language, userId }) => {
                         size="small"
                         onClick={() => handleRemoveScheme(scheme.id)}
                         sx={{ position: 'absolute', top: 8, right: 8 }}
-                        aria-label="Remove scheme"
+                        aria-label={t.education.removeScheme}
                       >
                         <Delete fontSize="small" />
                       </IconButton>
@@ -503,7 +506,7 @@ export const Education: React.FC<EducationProps> = ({ language, userId }) => {
               {/* Overall Advice */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-                  Overall Advice
+                  {t.education.overallAdviceLabel}
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
                   {overallAdvice.advice}
@@ -515,7 +518,7 @@ export const Education: React.FC<EducationProps> = ({ language, userId }) => {
               {/* Key Points */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-                  Key Points
+                  {t.education.keyPoints}
                 </Typography>
                 <List dense>
                   {overallAdvice.key_points.map((point, index) => (
@@ -534,7 +537,7 @@ export const Education: React.FC<EducationProps> = ({ language, userId }) => {
               {/* Utilization Tips */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-                  How to Utilize the Benefits
+                  {t.education.utilizationTips}
                 </Typography>
                 <List dense>
                   {overallAdvice.utilization_tips.map((tip, index) => (
@@ -553,7 +556,7 @@ export const Education: React.FC<EducationProps> = ({ language, userId }) => {
               {/* Potential Impact */}
               <Box>
                 <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-                  Potential Impact
+                  {t.education.potentialImpact}
                 </Typography>
                 <Alert severity="success">
                   <Typography variant="body2">

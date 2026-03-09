@@ -98,3 +98,14 @@ export interface ApiResponse<T> {
     message: string;
   };
 }
+
+// Interested Scheme Request
+export interface InterestedSchemeCreateRequest {
+  profile_id: string;
+  scheme_name: string;
+  scheme_slug?: string;
+  scheme_description?: string;
+  scheme_benefits?: string;
+  scheme_ministry?: string;
+  scheme_apply_link?: string;
+}

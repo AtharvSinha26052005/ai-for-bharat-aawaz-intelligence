@@ -30,6 +30,11 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(fast-check)/)"
+    ]
+  },
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -47,5 +52,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "fast-check": "^4.6.0",
+    "pure-rand": "^8.0.0"
   }
 }

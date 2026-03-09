@@ -1,0 +1,163 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Fault Condition** - Hardcoded English Text Remains Untranslated
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate hardcoded English text remains visible when non-English languages are selected
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases across all pages (Profile, Schemes, Education, Applications, FraudCheck) with specific non-English languages (Hindi, Bengali, Marathi, Tamil)
+  - Test that when selectedLanguage is in ['hi', 'bn', 'mr', 'ta'] and user navigates to any page, NO hardcoded English strings are visible in form labels, buttons, placeholders, helper text, or dropdown options
+  - Test specific examples from Fault Condition:
+    - Profile page with Hindi: "Phone Number", "Aadhar Number", "Select Gender", "Save & Find Schemes" should use translation keys
+    - Schemes page with Bengali: filter labels and button text should use translation keys
+    - Education page with Tamil: page content and button labels should use translation keys
+    - Applications page with Marathi: status labels should use translation keys
+    - FraudCheck page with Hindi: input labels and result messages should use translation keys
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found: specific hardcoded strings that remain in English
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - English Language and Existing Behavior
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for English language and non-UI functionality:
+    - All text displays correctly in English
+    - Language selection persists across page navigation
+    - Form validation logic works correctly
+    - Navigation routing and state management work correctly
+    - API calls and data submission work correctly
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - For English language selection, all text renders identically to unfixed code
+    - Language persistence across navigation continues to work
+    - Form validation produces same results as unfixed code
+    - Navigation state management is unchanged
+    - API interactions produce same results as unfixed code
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 3. Fix for language switching incomplete translation
+
+  - [x] 3.1 Add missing translation keys to all translation files
+    - Add Profile page keys to en.ts, hi.ts, bn.ts, mr.ts, ta.ts:
+      - `phoneNumber`, `phoneNumberPlaceholder`, `phoneHelperText`
+      - `aadharNumber`, `aadharPlaceholder`, `aadharHelperText`
+      - `selectGender`, `selectCaste`
+      - `occupationPlaceholder`
+      - `blockOptional`, `villageOptional`, `pincodeOptional`
+      - `preferredMode`, `voice`, `text`, `both`
+      - `saveAndFindSchemes`, `updateAndFindSchemes`, `saving`
+      - `phoneValidation`, `aadharValidation`
+    - Add any missing keys for Schemes, Education, Applications, FraudCheck pages
+    - Ensure all translation files have complete and accurate translations
+    - _Bug_Condition: isBugCondition(input) where input.selectedLanguage IN ['hi', 'bn', 'mr', 'ta'] AND input.textElement IS hardcoded English string_
+    - _Expected_Behavior: All UI text elements render using translation keys from useTranslation hook, displaying in selected language_
+    - _Preservation: English language display, language persistence, form validation, navigation, and API interactions remain unchanged_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+  - [x] 3.2 Replace hardcoded strings in Profile.tsx with translation keys
+    - Replace "Phone Number" with {t.profile.phoneNumber}
+    - Replace "10 digit mobile number" with {t.profile.phoneNumberPlaceholder}
+    - Replace "Enter 10 digit mobile number" with {t.profile.phoneHelperText}
+    - Replace "Aadhar Number" with {t.profile.aadharNumber}
+    - Replace "12 digit Aadhar number" with {t.profile.aadharPlaceholder}
+    - Replace "Enter 12 digit Aadhar number" with {t.profile.aadharHelperText}
+    - Replace "Gender" with {t.profile.gender}
+    - Replace "Select Gender" with {t.profile.selectGender}
+    - Replace gender options ("Male", "Female", "Other") with translation keys
+    - Replace "Caste" with {t.profile.caste}
+    - Replace "Select Caste" with {t.profile.selectCaste}
+    - Replace caste options with translation keys
+    - Replace "Occupation" with {t.profile.occupation}
+    - Replace occupation placeholder with {t.profile.occupationPlaceholder}
+    - Replace "State" with {t.profile.state}
+    - Replace "District" with {t.profile.district}
+    - Replace "Block (Optional)" with {t.profile.blockOptional}
+    - Replace "Village (Optional)" with {t.profile.villageOptional}
+    - Replace "Pincode (Optional)" with {t.profile.pincodeOptional}
+    - Replace "Preferred Mode" with {t.profile.preferredMode}
+    - Replace mode options with translation keys
+    - Replace button text with conditional translation keys based on savedProfileId
+    - Replace validation error messages with translation keys
+    - _Bug_Condition: isBugCondition(input) where input.pageComponent = 'Profile' AND input.textElement IS hardcoded English string_
+    - _Expected_Behavior: All Profile page text elements render in selected language_
+    - _Preservation: Profile page functionality, validation logic, and English display remain unchanged_
+    - _Requirements: 2.1, 3.1, 3.2, 3.3_
+
+  - [x] 3.3 Replace hardcoded strings in Schemes.tsx with translation keys
+    - Identify all hardcoded English strings in Schemes page
+    - Replace filter labels with translation keys (e.g., t.schemes.filters)
+    - Replace button text with translation keys (e.g., t.schemes.clearFilters)
+    - Replace search placeholders with translation keys
+    - Replace any other hardcoded text with appropriate translation keys
+    - _Bug_Condition: isBugCondition(input) where input.pageComponent = 'Schemes' AND input.textElement IS hardcoded English string_
+    - _Expected_Behavior: All Schemes page text elements render in selected language_
+    - _Preservation: Schemes page filtering, search, and navigation remain unchanged_
+    - _Requirements: 2.2, 3.1, 3.4_
+
+  - [x] 3.4 Replace hardcoded strings in Education.tsx with translation keys
+    - Identify all hardcoded English strings in Education page
+    - Replace page content with translation keys
+    - Replace button labels with translation keys
+    - Replace any other hardcoded text with appropriate translation keys
+    - _Bug_Condition: isBugCondition(input) where input.pageComponent = 'Education' AND input.textElement IS hardcoded English string_
+    - _Expected_Behavior: All Education page text elements render in selected language_
+    - _Preservation: Education page functionality and navigation remain unchanged_
+    - _Requirements: 2.3, 3.1, 3.4_
+
+  - [x] 3.5 Replace hardcoded strings in Applications.tsx with translation keys
+    - Identify all hardcoded English strings in Applications page
+    - Replace status labels with translation keys
+    - Replace descriptions with translation keys
+    - Replace any other hardcoded text with appropriate translation keys
+    - _Bug_Condition: isBugCondition(input) where input.pageComponent = 'Applications' AND input.textElement IS hardcoded English string_
+    - _Expected_Behavior: All Applications page text elements render in selected language_
+    - _Preservation: Applications page functionality and data display remain unchanged_
+    - _Requirements: 2.4, 3.1, 3.4_
+
+  - [x] 3.6 Replace hardcoded strings in FraudCheck.tsx with translation keys
+    - Identify all hardcoded English strings in Fraud Check page
+    - Replace input labels with translation keys
+    - Replace placeholders with translation keys
+    - Replace result messages with translation keys
+    - Replace any other hardcoded text with appropriate translation keys
+    - _Bug_Condition: isBugCondition(input) where input.pageComponent = 'FraudCheck' AND input.textElement IS hardcoded English string_
+    - _Expected_Behavior: All Fraud Check page text elements render in selected language_
+    - _Preservation: Fraud Check page functionality and validation remain unchanged_
+    - _Requirements: 2.5, 3.1, 3.4_
+
+  - [x] 3.7 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Complete UI Translation
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify that all hardcoded English strings are now replaced with translation keys
+    - Verify that switching to non-English languages displays all text in the selected language
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+
+  - [x] 3.8 Verify preservation tests still pass
+    - **Property 2: Preservation** - English Language and Existing Behavior
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm English language display is identical to unfixed code
+    - Confirm language persistence across navigation still works
+    - Confirm form validation logic is unchanged
+    - Confirm navigation and routing are unchanged
+    - Confirm API interactions are unchanged
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Verify all exploration tests pass (bug is fixed)
+  - Verify all preservation tests pass (no regressions)
+  - Test full user flow: select each non-English language and navigate through all pages
+  - Verify no hardcoded English strings remain visible
+  - Verify English language continues to work exactly as before
+  - Ask the user if questions arise

@@ -157,7 +157,9 @@ export const SchemeCard: React.FC<SchemeCardProps> = ({
       {/* Action buttons */}
       <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
         <Button 
-          size="small" 
+          size="small"
+          variant="contained" 
+          color="primary"
           onClick={() => onViewDetails(scheme)}
           aria-label={`View details for ${scheme.scheme.officialName}`}
         >
@@ -166,12 +168,22 @@ export const SchemeCard: React.FC<SchemeCardProps> = ({
         <Button
           size="small"
           variant="contained"
+          color="secondary"
+          sx={{
+            opacity: 0.75,
+          }}
+        >
+          Verified
+        </Button>
+        {/* <Button
+          size="small"
+          variant="contained"
           color="primary"
           onClick={() => onApply(scheme.scheme.schemeId)}
           aria-label={`Apply now for ${scheme.scheme.officialName}`}
         >
           {t.schemes.applyNow}
-        </Button>
+        </Button> */}
       </CardActions>
     </Card>
   );
