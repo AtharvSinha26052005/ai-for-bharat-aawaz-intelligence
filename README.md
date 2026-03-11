@@ -870,8 +870,7 @@ curl https://your-domain.com/health
 ### Contact
 
 - **GitHub Issues**: [repository-url]/issues
-- **Email**: support@aawaz.gov.in (placeholder)
-- **Website**: https://aawaz.gov.in (placeholder)
+- **Website**: https://d14gfq1u1sly2k.cloudfront.net/
 
 ### Contributing
 
