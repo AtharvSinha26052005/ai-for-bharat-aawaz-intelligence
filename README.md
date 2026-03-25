@@ -1,4 +1,6 @@
 # Rural Digital Rights AI Companion - Complete Project Documentation
+![architecture](https://github.com/user-attachments/assets/51934919-620f-4479-91fb-92e0e3412e8b)
+
 
 ## 📋 Table of Contents
 
@@ -380,10 +382,8 @@ npm run dev
 ```
 
 9. **Access the application**:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000
-- Health Check: http://localhost:3000/health
-- Metrics: http://localhost:3000/metrics
+- App: https://d14gfq1u1sly2k.cloudfront.net
+- Health Check: https://j75wbhovsh.execute-api.us-east-1.amazonaws.com/health
 
 ### Docker Setup
 
